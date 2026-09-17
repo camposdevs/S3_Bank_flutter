@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+ 
 /// Representa os 4 níveis de gamificação do S3 Bank.
 /// Cada nível define o percentual de rendimento sobre o CDI
 /// e a identidade visual do cartão digital.
@@ -9,7 +9,7 @@ enum UserTier {
   ouro,
   diamante,
 }
-
+ 
 /// Extensão com todas as regras de negócio do sistema de níveis.
 extension UserTierX on UserTier {
   /// Percentual do CDI que o usuário recebe neste nível.
@@ -25,9 +25,9 @@ extension UserTierX on UserTier {
         return 1.40; // 140% do CDI
     }
   }
-
+ 
   String get cdiLabel => '${(cdiPercentage * 100).toStringAsFixed(0)}% do CDI';
-
+ 
   String get displayName {
     switch (this) {
       case UserTier.bronze:
@@ -40,7 +40,7 @@ extension UserTierX on UserTier {
         return 'Diamante';
     }
   }
-
+ 
   /// Próximo nível na progressão. Retorna null se já é o nível máximo.
   UserTier? get next {
     switch (this) {
@@ -54,7 +54,7 @@ extension UserTierX on UserTier {
         return null;
     }
   }
-
+ 
   /// Pontuação de constância (aportes consecutivos/streak) necessária
   /// para avançar para o próximo nível.
   /// TODO(integração-backend): substituir por regra vinda da API,
@@ -72,12 +72,12 @@ extension UserTierX on UserTier {
         return 0; // nível máximo, sem próxima meta
     }
   }
-
+ 
   /// Cor sólida principal usada em badges e textos de destaque.
   Color get primaryColor {
     switch (this) {
       case UserTier.bronze:
-        return const Color(0xFFCD7F32);
+        return const Color(0xFFEC4899);
       case UserTier.prata:
         return const Color(0xFFC0C0C8);
       case UserTier.ouro:
@@ -86,14 +86,14 @@ extension UserTierX on UserTier {
         return const Color(0xFF7B61FF);
     }
   }
-
+ 
   /// Gradiente usado no cartão digital, refletindo o material/acabamento
-  /// de cada nível (bronze fosco, prata escovada, ouro metálico,
+  /// de cada nível (bronze em rosa, prata escovada, ouro metálico,
   /// diamante em degradê azul-violeta).
   List<Color> get cardGradient {
     switch (this) {
       case UserTier.bronze:
-        return const [Color(0xFF8C5A2B), Color(0xFFCD8A4A), Color(0xFF6E4423)];
+        return const [Color(0xFFDB2777), Color(0xFFF472B6), Color(0xFF9D174D)];
       case UserTier.prata:
         return const [Color(0xFF8E8E96), Color(0xFFE2E2E8), Color(0xFF6B6B72)];
       case UserTier.ouro:
@@ -102,7 +102,7 @@ extension UserTierX on UserTier {
         return const [Color(0xFF2A1D6E), Color(0xFF6A4CE0), Color(0xFFB98CFF)];
     }
   }
-
+ 
   IconData get icon {
     switch (this) {
       case UserTier.bronze:
@@ -116,3 +116,4 @@ extension UserTierX on UserTier {
     }
   }
 }
+ 
