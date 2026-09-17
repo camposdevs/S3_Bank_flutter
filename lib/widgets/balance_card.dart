@@ -29,27 +29,56 @@ class BalanceCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Saldo em conta',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      gradient: AppColors.loginGradient,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: const Text(
+                      'Conta corrente',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
               GestureDetector(
                 onTap: onToggleVisibility,
-                child: Icon(
-                  visible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                  size: 18,
-                  color: AppColors.textSecondary,
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceElevated,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    visible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                    size: 16,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
+          const Text(
+            'Saldo disponível',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          ),
+          const SizedBox(height: 4),
           Text(
             visible ? formatter.format(balance) : 'R\$ ••••••',
             style: const TextStyle(
-              fontSize: 30,
+              fontSize: 32,
               fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
               letterSpacing: -0.5,

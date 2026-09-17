@@ -27,6 +27,7 @@ class TransactionTile extends StatelessWidget {
     final dateFormatter = DateFormat('dd/MM • HH:mm');
     final color = transaction.isCredit ? AppColors.success : AppColors.textPrimary;
     final sign = transaction.isCredit ? '+ ' : '- ';
+    final iconColor = transaction.isCredit ? AppColors.success : AppColors.accentLight;
 
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -34,10 +35,10 @@ class TransactionTile extends StatelessWidget {
         width: 42,
         height: 42,
         decoration: BoxDecoration(
-          color: AppColors.surfaceElevated,
+          color: iconColor.withOpacity(0.14),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(_icon, color: AppColors.textSecondary, size: 20),
+        child: Icon(_icon, color: iconColor, size: 20),
       ),
       title: Text(
         transaction.title,

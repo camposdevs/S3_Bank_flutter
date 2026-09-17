@@ -66,24 +66,40 @@ class LevelProgressBar extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         ClipRRect(
           borderRadius: BorderRadius.circular(999),
           child: Stack(
             children: [
-              Container(height: 10, color: AppColors.surfaceElevated),
+              Container(height: 12, color: AppColors.surfaceElevated),
               FractionallySizedBox(
                 widthFactor: progress.clamp(0.0, 1.0),
                 child: Container(
-                  height: 10,
+                  height: 12,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [currentTier.primaryColor, nextTier!.primaryColor],
-                    ),
+                    gradient: AppColors.loginGradient,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.loginBlueMid.withOpacity(0.5),
+                        blurRadius: 8,
+                      ),
+                    ],
                   ),
                 ),
               ),
             ],
+          ),
+        ),
+        const SizedBox(height: 6),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Text(
+            '${(progress * 100).toStringAsFixed(0)}% completo',
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+              fontFamily: 'monospace',
+            ),
           ),
         ),
       ],

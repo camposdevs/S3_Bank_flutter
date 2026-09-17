@@ -10,26 +10,36 @@ class TierBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = tier.primaryColor;
+    final gradientColors = tier.cardGradient;
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: large ? 14 : 10,
         vertical: large ? 8 : 5,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: gradientColors,
+        ),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: gradientColors.last.withOpacity(0.35),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(tier.icon, size: large ? 18 : 14, color: color),
+          Icon(tier.icon, size: large ? 18 : 14, color: Colors.white),
           const SizedBox(width: 6),
           Text(
             tier.displayName,
             style: TextStyle(
-              color: color,
+              color: Colors.white,
               fontWeight: FontWeight.w700,
               fontSize: large ? 14 : 12,
             ),

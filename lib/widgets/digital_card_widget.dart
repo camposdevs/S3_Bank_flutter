@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/theme/app_colors.dart';
 import '../models/card_model.dart';
 import '../models/user_tier.dart';
 
@@ -34,11 +35,12 @@ class DigitalCardWidget extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: gradientColors,
         ),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
         boxShadow: [
           BoxShadow(
-            color: gradientColors.last.withOpacity(0.35),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
+            color: gradientColors.last.withOpacity(0.4),
+            blurRadius: 28,
+            offset: const Offset(0, 14),
           ),
         ],
       ),
@@ -152,7 +154,11 @@ class _ChipAndContactless extends StatelessWidget {
           width: 38,
           height: 28,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.85),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppColors.chipSilver, AppColors.chipSilverDark],
+            ),
             borderRadius: BorderRadius.circular(6),
           ),
         ),
