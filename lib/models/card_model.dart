@@ -8,7 +8,6 @@ class CardModel {
   final String cardNumber; // formato completo, mascarado na UI
   final String expiry; // MM/AA
   final String cvv;
-  final bool isBlocked;
   final UserTier tier;
 
   const CardModel({
@@ -17,7 +16,6 @@ class CardModel {
     required this.expiry,
     required this.cvv,
     required this.tier,
-    this.isBlocked = false,
   });
 
   String get maskedNumber {
@@ -37,14 +35,13 @@ class CardModel {
     return buffer.toString();
   }
 
-  CardModel copyWith({bool? isBlocked, UserTier? tier}) {
+  CardModel copyWith({UserTier? tier}) {
     return CardModel(
       holderName: holderName,
       cardNumber: cardNumber,
       expiry: expiry,
       cvv: cvv,
       tier: tier ?? this.tier,
-      isBlocked: isBlocked ?? this.isBlocked,
     );
   }
 }

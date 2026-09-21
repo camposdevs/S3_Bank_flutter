@@ -22,11 +22,6 @@ class CardProvider extends ChangeNotifier {
 
   CardModel get card => _card;
 
-  void toggleBlocked() {
-    _card = _card.copyWith(isBlocked: !_card.isBlocked);
-    notifyListeners();
-  }
-
   /// Chamado quando o usuário sobe (ou, em tese, desce) de nível, para que
   /// o cartão digital atualize sua cor/skin automaticamente.
   void syncTier(UserTier tier) {

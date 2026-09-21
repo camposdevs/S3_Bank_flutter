@@ -72,29 +72,6 @@ class _CardScreenState extends State<CardScreen> {
             ),
             const SizedBox(height: 16),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Bloquear cartão temporariamente',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                subtitle: Text(
-                  card.isBlocked
-                      ? 'Cartão bloqueado — nenhuma compra será autorizada.'
-                      : 'Cartão ativo para uso.',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                ),
-                value: card.isBlocked,
-                activeColor: AppColors.danger,
-                onChanged: (_) => cardProvider.toggleBlocked(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: AppColors.surfaceElevated,
