@@ -1,14 +1,15 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
 
-/// Tela de login inspirada no app do C6 Bank: topo escuro com a marca
-/// em destaque, um "cartão" flutuante com o degradê roxo->azul, e os
-/// campos de acesso dentro do próprio cartão — a mesma lógica visual
-/// do C6, onde o cartão físico vira o cenário da tela de acesso.
-/// O botão "Entrar" já está ligado ao [AuthProvider] (autenticação
-/// puramente local, em memória, sem banco de dados nenhum).
+/// Tela de login inspirada na estrutura do app do C6 Bank: um cenário
+/// de fundo em tela cheia (lá é uma foto; aqui, um "cenário atmosférico"
+/// feito só com o degradê da marca, já que não temos uma foto real) com
+/// a marca em destaque no topo, e uma ficha de acesso ancorada na parte
+/// de baixo da tela (cantos arredondados só em cima, sem flutuar como
+/// cartão) com efeito de vidro fosco sobre o cenário.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -60,69 +61,117 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: IntrinsicHeight(
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 24),
-                      const _BrandHeader(),
-                      const SizedBox(height: 28),
-                      Expanded(
-                        child: _LoginCard(
-                          formKey: _formKey,
-                          loginController: _loginController,
-                          passwordController: _passwordController,
-                          obscurePassword: _obscurePassword,
-                          loading: _loading,
-                          errorMessage: _errorMessage,
-                          onToggleObscurePassword: _toggleObscurePassword,
-                          onSubmit: _submit,
-                        ),
-                      ),
-                    ],
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          const _AtmosphericBackground(),
+          SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                const Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 48),
+                    child: _BrandHeader(),
                   ),
                 ),
-              ),
-            );
-          },
-        ),
+                _AccessSheet(
+                  formKey: _formKey,
+                  loginController: _loginController,
+                  passwordController: _passwordController,
+                  obscurePassword: _obscurePassword,
+                  loading: _loading,
+                  errorMessage: _errorMessage,
+                  onToggleObscurePassword: _toggleObscurePassword,
+                  onSubmit: _submit,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// Topo com a marca em destaque, do jeito que o C6 abre a splash
-/// antes de mostrar o card de login.
+/// Cenário de fundo "atmosférico": camadas de luz desfocada na paleta
+/// da marca, ocupando a tela inteira — faz o papel que uma foto faria
+/// no app do C6, mas 100% construído com o degradê do S3 Bank.
+class _AtmosphericBackground extends StatelessWidget {
+  const _AtmosphericBackground();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.background,
+      child: Stack(
+        children: [
+          Positioned(
+            top: -120,
+            left: -80,
+            child: _glowCircle(420, AppColors.loginPurpleTop.withOpacity(0.55)),
+          ),
+          Positioned(
+            top: 140,
+            right: -140,
+            child: _glowCircle(380, AppColors.loginBlueMid.withOpacity(0.45)),
+          ),
+          Positioned(
+            bottom: 180,
+            left: -100,
+            child: _glowCircle(360, AppColors.loginBlueDark.withOpacity(0.55)),
+          ),
+          Positioned(
+            bottom: -60,
+            right: -60,
+            child: _glowCircle(300, AppColors.accentLight.withOpacity(0.3)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _glowCircle(double size, Color color) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(colors: [color, Colors.transparent]),
+      ),
+    );
+  }
+}
+
+/// Marca centralizada na parte de cima do cenário — mesma posição que
+/// o logo do C6 ocupa sobre a foto.
 class _BrandHeader extends StatelessWidget {
   const _BrandHeader();
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
         Image.asset(
           'assets/images/logo.png',
-          width: 200,
+          width: 190,
           fit: BoxFit.contain,
         ),
         const SizedBox(height: 10),
         const Text(
           'Sua conta, seu ritmo.',
-          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          style: TextStyle(color: Colors.white70, fontSize: 13),
         ),
       ],
     );
   }
 }
 
-/// O "cartão" propriamente dito: degradê roxo->azul, chip EMV prata no
-/// canto, e os campos de login dentro dele.
-class _LoginCard extends StatelessWidget {
+/// Ficha de acesso ancorada na base da tela, com efeito de vidro fosco
+/// desfocando o cenário atrás dela — mesma lógica do painel do C6, só
+/// que aqui sobre o degradê em vez de uma foto.
+class _AccessSheet extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final TextEditingController loginController;
   final TextEditingController passwordController;
@@ -132,7 +181,7 @@ class _LoginCard extends StatelessWidget {
   final VoidCallback onToggleObscurePassword;
   final VoidCallback onSubmit;
 
-  const _LoginCard({
+  const _AccessSheet({
     required this.formKey,
     required this.loginController,
     required this.passwordController,
@@ -145,66 +194,54 @@ class _LoginCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: BoxDecoration(
-        gradient: AppColors.loginGradient,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.loginBlueDark.withOpacity(0.5),
-            blurRadius: 30,
-            offset: const Offset(0, 16),
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.fromLTRB(
+            24,
+            20,
+            24,
+            MediaQuery.of(context).viewInsets.bottom > 0
+                ? 20
+                : MediaQuery.of(context).padding.bottom + 24,
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Linha do "chip" EMV, como um cartão físico de verdade.
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  width: 42,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppColors.chipSilver, AppColors.chipSilverDark],
-                    ),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
-                const Text(
-                  'mastercard.',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+          decoration: BoxDecoration(
+            color: AppColors.surface.withOpacity(0.82),
+            border: Border(
+              top: BorderSide(color: Colors.white.withOpacity(0.08)),
             ),
-            const SizedBox(height: 28),
-            const Text(
-              'Acesse sua conta',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Form(
+          ),
+          child: SingleChildScrollView(
+            child: Form(
               key: formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _GlassField(
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 18),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  const Text(
+                    'Acesse sua conta',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _AccessField(
                     controller: loginController,
                     label: 'CPF ou e-mail',
                     icon: Icons.person_outline,
@@ -213,8 +250,8 @@ class _LoginCard extends StatelessWidget {
                         ? 'Informe seu CPF ou e-mail'
                         : null,
                   ),
-                  const SizedBox(height: 14),
-                  _GlassField(
+                  const SizedBox(height: 12),
+                  _AccessField(
                     controller: passwordController,
                     label: 'Senha',
                     icon: Icons.lock_outline,
@@ -226,19 +263,19 @@ class _LoginCard extends StatelessWidget {
                         obscurePassword
                             ? Icons.visibility_outlined
                             : Icons.visibility_off_outlined,
-                        color: Colors.white70,
+                        color: AppColors.textSecondary,
                         size: 20,
                       ),
                       onPressed: onToggleObscurePassword,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: () {},
                       style: TextButton.styleFrom(
-                        foregroundColor: Colors.white,
+                        foregroundColor: AppColors.accentLight,
                         padding: EdgeInsets.zero,
                         minimumSize: const Size(0, 32),
                       ),
@@ -248,92 +285,106 @@ class _LoginCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   if (errorMessage != null) ...[
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.25),
+                        color: AppColors.danger.withOpacity(0.14),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         errorMessage!,
                         style: const TextStyle(
-                          color: Color(0xFFFFD9DC),
+                          color: AppColors.danger,
                           fontSize: 12.5,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                   ],
-                  SizedBox(
+                  Container(
                     height: 52,
-                    child: ElevatedButton(
-                      onPressed: loading ? null : onSubmit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: AppColors.loginBlueDark,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      gradient: AppColors.loginGradient,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.loginBlueMid.withOpacity(0.45),
+                          blurRadius: 18,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: loading ? null : onSubmit,
+                        child: Center(
+                          child: loading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.4,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  'ENTRAR',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
                         ),
                       ),
-                      child: loading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.4,
-                                color: AppColors.loginBlueDark,
-                              ),
-                            )
-                          : const Text(
-                              'ENTRAR',
-                              style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.5),
-                            ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   Row(
                     children: [
-                      const Expanded(child: Divider(color: Colors.white24, height: 1)),
+                      Expanded(child: Divider(color: AppColors.border, height: 1)),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Text(
                           'ou',
-                          style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12),
+                          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                         ),
                       ),
-                      const Expanded(child: Divider(color: Colors.white24, height: 1)),
+                      Expanded(child: Divider(color: AppColors.border, height: 1)),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   OutlinedButton.icon(
                     onPressed: () {},
-                    icon: const Icon(Icons.fingerprint, color: Colors.white, size: 22),
+                    icon: const Icon(Icons.fingerprint, color: AppColors.textPrimary, size: 22),
                     label: const Text(
                       'Entrar com biometria',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
                     ),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.white38),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: AppColors.surfaceElevated,
+                      side: BorderSide(color: AppColors.border),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   Center(
                     child: RichText(
                       text: TextSpan(
-                        style: const TextStyle(color: Colors.white70, fontSize: 13),
+                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                         children: [
                           const TextSpan(text: 'Ainda não é cliente? '),
                           TextSpan(
                             text: 'Abra sua conta',
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                               fontWeight: FontWeight.w700,
                               decoration: TextDecoration.underline,
                             ),
@@ -345,17 +396,17 @@ class _LoginCard extends StatelessWidget {
                 ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// Campo de texto "vidro fosco" — fundo semitransparente sobre o
-/// degradê do cartão, com ícone e borda sutil, no estilo dos campos
-/// de login flutuando sobre o cartão no app do C6.
-class _GlassField extends StatelessWidget {
+/// Campo de texto no estilo padrão do app (superfície escura elevada),
+/// já que agora a ficha fica sobre o painel de vidro, não sobre um
+/// cartão colorido.
+class _AccessField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
   final IconData icon;
@@ -364,7 +415,7 @@ class _GlassField extends StatelessWidget {
   final String? Function(String?)? validator;
   final Widget? suffixIcon;
 
-  const _GlassField({
+  const _AccessField({
     required this.controller,
     required this.label,
     required this.icon,
@@ -381,15 +432,15 @@ class _GlassField extends StatelessWidget {
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
-      style: const TextStyle(color: Colors.white, fontSize: 14.5),
-      cursorColor: Colors.white,
+      style: const TextStyle(color: AppColors.textPrimary, fontSize: 14.5),
+      cursorColor: AppColors.accentLight,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: Colors.white70, fontSize: 13.5),
-        prefixIcon: Icon(icon, color: Colors.white70, size: 20),
+        labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13.5),
+        prefixIcon: Icon(icon, color: AppColors.textSecondary, size: 20),
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: Colors.white.withOpacity(0.12),
+        fillColor: AppColors.surfaceElevated,
         contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -397,13 +448,13 @@ class _GlassField extends StatelessWidget {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.18)),
+          borderSide: BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Colors.white, width: 1.4),
+          borderSide: const BorderSide(color: AppColors.accentLight, width: 1.4),
         ),
-        errorStyle: const TextStyle(color: Color(0xFFFFD9DC), fontSize: 11),
+        errorStyle: const TextStyle(color: AppColors.danger, fontSize: 11),
       ),
     );
   }
