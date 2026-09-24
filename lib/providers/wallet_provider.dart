@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/transaction.dart';
 
+/// Arredonda para centavos. Somar/subtrair `double` acumula erro
+/// (3482.17 - 68.9 vira 3413.2700000000004), e isso pode fazer
+/// comparações de saldo falharem por uma fração de centavo.
+double _round2(double value) => (value * 100).round() / 100;
+
 /// Gerencia o saldo da conta corrente e o histórico geral de transações
 /// (Pix + movimentações de caixinhas refletidas na conta).
 /// TODO(integração-backend): substituir por chamadas reais a uma API
@@ -8,10 +13,11 @@ import '../models/transaction.dart';
 class WalletProvider extends ChangeNotifier {
   double _balance;
   bool _balanceVisible = true;
+  int _idSeq = 0;
   final List<Transaction> _transactions;
 
   WalletProvider({double initialBalance = 3482.17})
-      : _balance = initialBalance,
+      : _balance = _round2(initialBalance),
         _transactions = _seedTransactions();
 
   double get balance => _balance;
@@ -23,17 +29,22 @@ class WalletProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Id único: o contador evita colisão se duas transações forem
+  /// criadas no mesmo microssegundo.
+  String _newId() => '${DateTime.now().microsecondsSinceEpoch}-${_idSeq++}';
+
   bool sendPix(double amount, {required String recipient}) {
-    if (amount <= 0 || amount > _balance) return false;
-    _balance -= amount;
+    final value = _round2(amount);
+    if (value <= 0 || value > _balance) return false;
+    _balance = _round2(_balance - value);
     _transactions.insert(
       0,
       Transaction(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        id: _newId(),
         type: TransactionType.pixSent,
         title: 'Pix enviado',
         subtitle: recipient,
-        amount: amount,
+        amount: value,
         date: DateTime.now(),
       ),
     );
@@ -41,35 +52,40 @@ class WalletProvider extends ChangeNotifier {
     return true;
   }
 
-  void receivePix(double amount, {required String sender}) {
-    _balance += amount;
+  /// Antes não validava o valor: um valor negativo debitava o saldo.
+  bool receivePix(double amount, {required String sender}) {
+    final value = _round2(amount);
+    if (value <= 0) return false;
+    _balance = _round2(_balance + value);
     _transactions.insert(
       0,
       Transaction(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        id: _newId(),
         type: TransactionType.pixReceived,
         title: 'Pix recebido',
         subtitle: sender,
-        amount: amount,
+        amount: value,
         date: DateTime.now(),
       ),
     );
     notifyListeners();
+    return true;
   }
 
   /// Usado pela área "Guardar Dinheiro" para debitar da conta corrente
   /// quando o usuário faz um aporte em uma caixinha.
   bool debitForSavings(double amount, {required String goalName}) {
-    if (amount <= 0 || amount > _balance) return false;
-    _balance -= amount;
+    final value = _round2(amount);
+    if (value <= 0 || value > _balance) return false;
+    _balance = _round2(_balance - value);
     _transactions.insert(
       0,
       Transaction(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        id: _newId(),
         type: TransactionType.savingsDeposit,
         title: 'Guardado em $goalName',
         subtitle: 'Guardar Dinheiro',
-        amount: amount,
+        amount: value,
         date: DateTime.now(),
       ),
     );
@@ -78,20 +94,23 @@ class WalletProvider extends ChangeNotifier {
   }
 
   /// Usado quando o usuário resgata uma caixinha de volta para a conta.
-  void creditFromSavings(double amount, {required String goalName}) {
-    _balance += amount;
+  bool creditFromSavings(double amount, {required String goalName}) {
+    final value = _round2(amount);
+    if (value <= 0) return false;
+    _balance = _round2(_balance + value);
     _transactions.insert(
       0,
       Transaction(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        id: _newId(),
         type: TransactionType.savingsWithdraw,
         title: 'Resgatado de $goalName',
         subtitle: 'Guardar Dinheiro',
-        amount: amount,
+        amount: value,
         date: DateTime.now(),
       ),
     );
     notifyListeners();
+    return true;
   }
 
   static List<Transaction> _seedTransactions() {
