@@ -11,7 +11,7 @@ import '../../widgets/transaction_tile.dart';
 import '../../models/transaction.dart';
 
 // Dados fixos usados na geração da cobrança (ideal: vir do usuário logado).
-const _kMerchantPixKey = 'rafaela@email.com';
+// A chave Pix agora vem de "Minhas Chaves" (PixKeysProvider.primaryKey).
 const _kMerchantName = 'Rafaela Souza';
 const _kMerchantCity = 'SAO PAULO';
 
@@ -180,6 +180,15 @@ class PixScreen extends StatelessWidget {
 
   void _showReceiveModal(BuildContext context) {
     final wallet = context.read<WalletProvider>();
+    final receiveKey = context.read<PixKeysProvider>().primaryKey;
+    if (receiveKey == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cadastre uma chave Pix em "Minhas Chaves" para receber.'),
+        ),
+      );
+      return;
+    }
     final senderController = TextEditingController();
     final amountController = TextEditingController();
     final formKey = GlobalKey<FormState>();
@@ -219,7 +228,7 @@ class PixScreen extends StatelessWidget {
                           final amount = _parseAmount(amountController.text)!;
                           final sender = senderController.text.trim();
                           final payload = PixPayloadGenerator.generate(
-                            pixKey: _kMerchantPixKey,
+                            pixKey: receiveKey.payloadValue,
                             merchantName: _kMerchantName,
                             merchantCity: _kMerchantCity,
                             amount: amount,
@@ -414,7 +423,7 @@ class PixScreen extends StatelessWidget {
                           leading: const Icon(Icons.vpn_key_outlined,
                               color: AppColors.accentLight),
                           title: Text(k.type.label),
-                          subtitle: Text(k.value,
+                          subtitle: Text(k.displayValue,
                               style: const TextStyle(color: AppColors.textSecondary)),
                           trailing: IconButton(
                             tooltip: 'Remover chave',
@@ -478,37 +487,44 @@ class PixScreen extends StatelessWidget {
                         items: PixKeyType.values
                             .map((t) => DropdownMenuItem(value: t, child: Text(t.label)))
                             .toList(),
-                        onChanged: (v) => setState(() => selectedType = v ?? PixKeyType.email),
+                        onChanged: (v) {
+                          setState(() => selectedType = v ?? PixKeyType.email);
+                          valueController.clear();
+                          formKey.currentState?.reset();
+                        },
                         decoration: const InputDecoration(labelText: 'Tipo de chave'),
                       ),
                       const SizedBox(height: 12),
-                      TextFormField(
-                        controller: valueController,
-                        decoration: const InputDecoration(labelText: 'Valor da chave'),
-                        validator: (v) {
-                          final value = (v ?? '').trim();
-                          if (value.isEmpty) return 'Informe o valor da chave';
-                          if (selectedType == PixKeyType.email &&
-                              !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value)) {
-                            return 'E-mail inválido';
-                          }
-                          final alreadyExists = keysProvider.keys.any((k) =>
-                              k.type == selectedType &&
-                              k.value.toLowerCase() == value.toLowerCase());
-                          if (alreadyExists) return 'Chave já cadastrada';
-                          return null;
-                        },
-                      ),
+                      if (selectedType == PixKeyType.random)
+                        const Text(
+                          'Uma chave aleatória será gerada automaticamente ao salvar.',
+                          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                        )
+                      else
+                        TextFormField(
+                          controller: valueController,
+                          keyboardType: selectedType.keyboardType,
+                          decoration: InputDecoration(
+                            labelText: 'Valor da chave',
+                            hintText: selectedType.hint,
+                          ),
+                          validator: (v) =>
+                              keysProvider.validateInput(selectedType, v ?? ''),
+                        ),
                       const SizedBox(height: 20),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: () {
                             if (!formKey.currentState!.validate()) return;
-                            keysProvider.addKey(
-                              type: selectedType,
-                              value: valueController.text.trim(),
-                            );
+                            if (selectedType == PixKeyType.random) {
+                              keysProvider.addRandomKey();
+                            } else {
+                              keysProvider.addKey(
+                                type: selectedType,
+                                value: valueController.text.trim(),
+                              );
+                            }
                             Navigator.of(ctx).pop();
                           },
                           child: const Text('Salvar chave'),
