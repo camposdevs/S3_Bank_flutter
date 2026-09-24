@@ -345,35 +345,6 @@ class _AccessSheet extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(child: Divider(color: AppColors.border, height: 1)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Text(
-                          'ou',
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                        ),
-                      ),
-                      Expanded(child: Divider(color: AppColors.border, height: 1)),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.fingerprint, color: AppColors.textPrimary, size: 22),
-                    label: const Text(
-                      'Entrar com biometria',
-                      style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: AppColors.surfaceElevated,
-                      side: BorderSide(color: AppColors.border),
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                  ),
                   const SizedBox(height: 16),
                   Center(
                     child: RichText(
