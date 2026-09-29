@@ -69,6 +69,7 @@ class DashboardScreen extends StatelessWidget {
               Expanded(
                 child: QuickAccessButton(
                   icon: Icons.qr_code,
+                  iconSize: 26,
                   label: 'Área Pix',
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const PixScreen()),

@@ -94,40 +94,50 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-/// Cenário de fundo "atmosférico": camadas de luz desfocada na paleta
-/// da marca, ocupando a tela inteira — faz o papel que uma foto faria
-/// no app do C6, mas 100% construído com o degradê do S3 Bank.
+/// Cenário de fundo "atmosférico": uma única camada de degradê da marca
+/// (roxo → azul → azul-escuro), suave e contínua, em vez de vários
+/// "borrões" de cor espalhados pela tela — mais sóbrio e alinhado com
+/// o degradê que já aparece no botão "ENTRAR" da ficha de acesso.
 class _AtmosphericBackground extends StatelessWidget {
   const _AtmosphericBackground();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.background,
-      child: Stack(
-        children: [
-          Positioned(
-            top: -120,
-            left: -80,
-            child: _glowCircle(420, AppColors.loginPurpleTop.withOpacity(0.55)),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Base sólida quase preta.
+        Container(color: AppColors.background),
+        // Wash único do degradê da marca, esmaecendo de cima pra baixo
+        // até se fundir com o fundo — mesma sequência de cores do botão.
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.loginPurpleTop.withOpacity(0.32),
+                AppColors.loginBlueMid.withOpacity(0.16),
+                AppColors.background,
+              ],
+              stops: const [0.0, 0.32, 0.68],
+            ),
           ),
-          Positioned(
-            top: 140,
-            right: -140,
-            child: _glowCircle(380, AppColors.loginBlueMid.withOpacity(0.45)),
-          ),
-          Positioned(
-            bottom: 180,
-            left: -100,
-            child: _glowCircle(360, AppColors.loginBlueDark.withOpacity(0.55)),
-          ),
-          Positioned(
-            bottom: -60,
-            right: -60,
-            child: _glowCircle(300, AppColors.accentLight.withOpacity(0.3)),
-          ),
-        ],
-      ),
+        ),
+        // Glow único e discreto atrás da logo, reforçando o degradê
+        // sem criar "bolhas" espalhadas.
+        Align(
+          alignment: const Alignment(0, -0.55),
+          child: _glowCircle(340, AppColors.loginBlueMid.withOpacity(0.20)),
+        ),
+        // Glow discreto logo acima da ficha de acesso, na mesma cor
+        // escura do fim do degradê — é o que faz o fundo "conversar"
+        // com a caixinha de entrar.
+        Align(
+          alignment: const Alignment(0, 0.9),
+          child: _glowCircle(460, AppColors.loginBlueDark.withOpacity(0.30)),
+        ),
+      ],
     );
   }
 

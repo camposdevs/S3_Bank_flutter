@@ -6,6 +6,7 @@ class QuickAccessButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   final Color? accentColor;
+  final double iconSize;
 
   const QuickAccessButton({
     super.key,
@@ -13,6 +14,7 @@ class QuickAccessButton extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.accentColor,
+    this.iconSize = 20,
   });
 
   @override
@@ -42,7 +44,7 @@ class QuickAccessButton extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Icon(icon, color: Colors.white, size: 20),
+              child: Icon(icon, color: Colors.white, size: iconSize),
             ),
             const SizedBox(height: 10),
             Text(
