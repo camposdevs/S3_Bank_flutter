@@ -147,27 +147,24 @@ class PixScreen extends StatelessWidget {
                     },
                   ),
                   const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (!formKey.currentState!.validate()) return;
-                        final amount = _parseAmount(amountController.text)!;
-                        final ok = wallet.sendPix(
-                          amount,
-                          recipient: recipientController.text.trim(),
-                        );
-                        Navigator.of(ctx).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(ok
-                                ? 'Pix enviado com sucesso!'
-                                : 'Não foi possível enviar o Pix.'),
-                          ),
-                        );
-                      },
-                      child: const Text('Confirmar pagamento'),
-                    ),
+                  _GradientButton(
+                    label: 'Confirmar pagamento',
+                    onTap: () {
+                      if (!formKey.currentState!.validate()) return;
+                      final amount = _parseAmount(amountController.text)!;
+                      final ok = wallet.sendPix(
+                        amount,
+                        recipient: recipientController.text.trim(),
+                      );
+                      Navigator.of(ctx).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(ok
+                              ? 'Pix enviado com sucesso!'
+                              : 'Não foi possível enviar o Pix.'),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -292,13 +289,7 @@ class PixScreen extends StatelessWidget {
             },
           ),
           const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: onGenerate,
-              child: const Text('Gerar QR Code'),
-            ),
-          ),
+          _GradientButton(label: 'Gerar QR Code', onTap: onGenerate),
         ],
       ),
     );
@@ -325,17 +316,27 @@ class PixScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
+        // Moldura com o gradiente da marca em volta do QR Code — o
+        // miolo continua branco puro, que é o que garante a leitura
+        // do código por qualquer leitor de QR.
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            gradient: AppColors.loginGradient,
+            borderRadius: BorderRadius.circular(19),
           ),
-          child: QrImageView(
-            data: payload,
-            version: QrVersions.auto,
-            size: 220,
-            backgroundColor: Colors.white,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: QrImageView(
+              data: payload,
+              version: QrVersions.auto,
+              size: 220,
+              backgroundColor: Colors.white,
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -420,8 +421,16 @@ class PixScreen extends StatelessWidget {
                       ...keysProvider.keys.map(
                         (k) => ListTile(
                           contentPadding: EdgeInsets.zero,
-                          leading: const Icon(Icons.vpn_key_outlined,
-                              color: AppColors.accentLight),
+                          leading: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: const BoxDecoration(
+                              gradient: AppColors.loginGradient,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.vpn_key_outlined,
+                                color: Colors.white, size: 17),
+                          ),
                           title: Text(k.type.label),
                           subtitle: Text(k.displayValue,
                               style: const TextStyle(color: AppColors.textSecondary)),
@@ -512,23 +521,20 @@ class PixScreen extends StatelessWidget {
                               keysProvider.validateInput(selectedType, v ?? ''),
                         ),
                       const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            if (!formKey.currentState!.validate()) return;
-                            if (selectedType == PixKeyType.random) {
-                              keysProvider.addRandomKey();
-                            } else {
-                              keysProvider.addKey(
-                                type: selectedType,
-                                value: valueController.text.trim(),
-                              );
-                            }
-                            Navigator.of(ctx).pop();
-                          },
-                          child: const Text('Salvar chave'),
-                        ),
+                      _GradientButton(
+                        label: 'Salvar chave',
+                        onTap: () {
+                          if (!formKey.currentState!.validate()) return;
+                          if (selectedType == PixKeyType.random) {
+                            keysProvider.addRandomKey();
+                          } else {
+                            keysProvider.addKey(
+                              type: selectedType,
+                              value: valueController.text.trim(),
+                            );
+                          }
+                          Navigator.of(ctx).pop();
+                        },
                       ),
                     ],
                   ),
@@ -573,7 +579,15 @@ class _PixActionCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, color: AppColors.accentLight, size: 22),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: const BoxDecoration(
+                  gradient: AppColors.loginGradient,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: Colors.white, size: 17),
+              ),
               const Spacer(),
               Text(
                 title,
@@ -589,6 +603,54 @@ class _PixActionCard extends StatelessWidget {
                 style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Botão de ação principal com o gradiente da marca — mesmo padrão do
+/// botão "ENTRAR" da tela de login, reaproveitado em todas as
+/// confirmações importantes do fluxo de Pix.
+class _GradientButton extends StatelessWidget {
+  final String label;
+  final VoidCallback? onTap;
+
+  const _GradientButton({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          gradient: AppColors.loginGradient,
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.loginBlueMid.withOpacity(0.4),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: onTap,
+            child: Center(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
           ),
         ),
       ),

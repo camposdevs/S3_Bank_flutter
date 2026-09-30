@@ -28,46 +28,58 @@ class _CardScreenState extends State<CardScreen> {
           children: [
             DigitalCardWidget(card: card, showDetails: _showDetails),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TextButton.icon(
-                  onPressed: () => setState(() => _showDetails = !_showDetails),
-                  icon: Icon(
-                    _showDetails ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                    size: 18,
-                  ),
-                  label: Text(_showDetails ? 'Ocultar dados' : 'Mostrar dados'),
+            Center(
+              child: OutlinedButton.icon(
+                onPressed: () => setState(() => _showDetails = !_showDetails),
+                icon: Icon(
+                  _showDetails ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  size: 17,
+                  color: AppColors.accentLight,
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
+                label: Text(
+                  _showDetails ? 'Ocultar dados' : 'Mostrar dados',
+                  style: const TextStyle(color: AppColors.accentLight, fontWeight: FontWeight.w600),
+                ),
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: AppColors.surfaceElevated,
+                  side: BorderSide(color: AppColors.border),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                ),
               ),
-              child: Column(
-                children: [
-                  _CopyRow(
-                    label: 'Número do cartão',
-                    value: card.groupedNumber,
-                    onCopy: () => _copyToClipboard(context, card.groupedNumber, 'Número'),
-                  ),
-                  const Divider(height: 1),
-                  _CopyRow(
-                    label: 'Validade',
-                    value: card.expiry,
-                    onCopy: () => _copyToClipboard(context, card.expiry, 'Validade'),
-                  ),
-                  const Divider(height: 1),
-                  _CopyRow(
-                    label: 'CVV',
-                    value: card.cvv,
-                    onCopy: () => _copyToClipboard(context, card.cvv, 'CVV'),
-                  ),
-                ],
+            ),
+            const SizedBox(height: 20),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  children: [
+                    // Faixa fina com o gradiente da marca — mesma
+                    // assinatura visual usada no site.
+                    Container(height: 3, decoration: const BoxDecoration(gradient: AppColors.loginGradient)),
+                    _CopyRow(
+                      label: 'Número do cartão',
+                      value: card.groupedNumber,
+                      onCopy: () => _copyToClipboard(context, card.groupedNumber, 'Número'),
+                    ),
+                    const Divider(height: 1, color: AppColors.border),
+                    _CopyRow(
+                      label: 'Validade',
+                      value: card.expiry,
+                      onCopy: () => _copyToClipboard(context, card.expiry, 'Validade'),
+                    ),
+                    const Divider(height: 1, color: AppColors.border),
+                    _CopyRow(
+                      label: 'CVV',
+                      value: card.cvv,
+                      onCopy: () => _copyToClipboard(context, card.cvv, 'CVV'),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -78,13 +90,25 @@ class _CardScreenState extends State<CardScreen> {
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.info_outline, color: AppColors.textSecondary, size: 18),
-                  const SizedBox(width: 10),
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.loginGradient,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.info_outline, color: Colors.white, size: 15),
+                  ),
+                  const SizedBox(width: 12),
                   const Expanded(
-                    child: Text(
-                      'Função: Apenas Débito. O visual do cartão é atualizado automaticamente conforme seu nível de rendimento evolui.',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+                    child: Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Text(
+                        'Função: Apenas Débito. O visual do cartão é atualizado automaticamente conforme seu nível de rendimento evolui.',
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5, height: 1.4),
+                      ),
                     ),
                   ),
                 ],
