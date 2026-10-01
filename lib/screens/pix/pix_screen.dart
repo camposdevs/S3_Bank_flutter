@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/pix_payload_generator.dart';
 import '../../core/theme/app_colors.dart';
+import '../../widgets/gradient_button.dart';
 import '../../providers/pix_keys_provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../widgets/transaction_tile.dart';

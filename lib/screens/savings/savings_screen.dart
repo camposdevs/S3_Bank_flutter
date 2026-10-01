@@ -7,6 +7,7 @@ import '../../models/user_tier.dart';
 import '../../providers/savings_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/wallet_provider.dart';
+import '../../widgets/gradient_button.dart';
 
 class SavingsScreen extends StatelessWidget {
   const SavingsScreen({super.key});
@@ -23,6 +24,7 @@ class SavingsScreen extends StatelessWidget {
         onPressed: () => _showCreateGoalModal(context),
         icon: const Icon(Icons.add),
         label: const Text('Nova caixinha'),
+        backgroundColor: AppColors.loginBlueMid,
       ),
       body: SafeArea(
         child: ListView(
@@ -32,8 +34,15 @@ class SavingsScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                gradient: AppColors.accentGradient,
+                gradient: AppColors.loginGradient,
                 borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.loginBlueMid.withOpacity(0.3),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
               child: Row(
                 children: [
@@ -144,11 +153,17 @@ class SavingsScreen extends StatelessWidget {
                         final selected = icon == selectedIcon;
                         return GestureDetector(
                           onTap: () => setState(() => selectedIcon = icon),
-                          child: CircleAvatar(
-                            radius: 22,
-                            backgroundColor: selected
-                                ? AppColors.accent
-                                : AppColors.surfaceElevated,
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              gradient: selected ? AppColors.loginGradient : null,
+                              color: selected ? null : AppColors.surfaceElevated,
+                              shape: BoxShape.circle,
+                              border: selected
+                                  ? null
+                                  : Border.all(color: AppColors.border),
+                            ),
                             child: Icon(icon, color: Colors.white, size: 20),
                           ),
                         );
@@ -173,21 +188,18 @@ class SavingsScreen extends StatelessWidget {
                       },
                     ),
                     const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (!formKey.currentState!.validate()) return;
-                          savings.createGoal(
-                            name: nameController.text.trim(),
-                            icon: selectedIcon,
-                            targetAmount:
-                                double.parse(targetController.text.replaceAll(',', '.')),
-                          );
-                          Navigator.of(ctx).pop();
-                        },
-                        child: const Text('Criar caixinha'),
-                      ),
+                    GradientButton(
+                      label: 'Criar caixinha',
+                      onTap: () {
+                        if (!formKey.currentState!.validate()) return;
+                        savings.createGoal(
+                          name: nameController.text.trim(),
+                          icon: selectedIcon,
+                          targetAmount:
+                              double.parse(targetController.text.replaceAll(',', '.')),
+                        );
+                        Navigator.of(ctx).pop();
+                      },
                     ),
                   ],
                 ),
@@ -257,10 +269,14 @@ class _GoalCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: AppColors.surfaceElevated,
-                child: Icon(goal.icon, color: AppColors.accentLight, size: 18),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: const BoxDecoration(
+                  gradient: AppColors.loginGradient,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(goal.icon, color: Colors.white, size: 18),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -281,11 +297,17 @@ class _GoalCard extends StatelessWidget {
           const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: goal.progress,
-              minHeight: 8,
-              backgroundColor: AppColors.surfaceElevated,
-              valueColor: const AlwaysStoppedAnimation(AppColors.accentLight),
+            child: Stack(
+              children: [
+                Container(height: 8, color: AppColors.surfaceElevated),
+                FractionallySizedBox(
+                  widthFactor: goal.progress.clamp(0.0, 1.0),
+                  child: Container(
+                    height: 8,
+                    decoration: const BoxDecoration(gradient: AppColors.loginGradient),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 14),
@@ -388,17 +410,14 @@ class _GoalCard extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (!formKey.currentState!.validate()) return;
-                      final amount = double.parse(controller.text.replaceAll(',', '.'));
-                      Navigator.of(ctx).pop();
-                      _deposit(context, goal, amount);
-                    },
-                    child: const Text('Confirmar'),
-                  ),
+                GradientButton(
+                  label: 'Confirmar',
+                  onTap: () {
+                    if (!formKey.currentState!.validate()) return;
+                    final amount = double.parse(controller.text.replaceAll(',', '.'));
+                    Navigator.of(ctx).pop();
+                    _deposit(context, goal, amount);
+                  },
                 ),
               ],
             ),
@@ -450,18 +469,15 @@ class _GoalCard extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (!formKey.currentState!.validate()) return;
-                      final amount = double.parse(controller.text.replaceAll(',', '.'));
-                      final actual = savings.withdraw(goal.id, amount);
-                      wallet.creditFromSavings(actual, goalName: goal.name);
-                      Navigator.of(ctx).pop();
-                    },
-                    child: const Text('Confirmar resgate'),
-                  ),
+                GradientButton(
+                  label: 'Confirmar resgate',
+                  onTap: () {
+                    if (!formKey.currentState!.validate()) return;
+                    final amount = double.parse(controller.text.replaceAll(',', '.'));
+                    final actual = savings.withdraw(goal.id, amount);
+                    wallet.creditFromSavings(actual, goalName: goal.name);
+                    Navigator.of(ctx).pop();
+                  },
                 ),
               ],
             ),
