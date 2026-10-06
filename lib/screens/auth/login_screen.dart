@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/atmospheric_background.dart';
+import 'signup_screen.dart';
 
 /// Tela de login inspirada na estrutura do app do C6 Bank: um cenário
 /// de fundo em tela cheia (lá é uma foto; aqui, um "cenário atmosférico"
@@ -57,6 +59,12 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _obscurePassword = !_obscurePassword);
   }
 
+  void _goToSignup() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SignupScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -64,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          const _AtmosphericBackground(),
+          const AtmosphericBackground(),
           SafeArea(
             bottom: false,
             child: Column(
@@ -84,70 +92,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   errorMessage: _errorMessage,
                   onToggleObscurePassword: _toggleObscurePassword,
                   onSubmit: _submit,
+                  onGoToSignup: _goToSignup,
                 ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Cenário de fundo "atmosférico": uma única camada de degradê da marca
-/// (roxo → azul → azul-escuro), suave e contínua, em vez de vários
-/// "borrões" de cor espalhados pela tela — mais sóbrio e alinhado com
-/// o degradê que já aparece no botão "ENTRAR" da ficha de acesso.
-class _AtmosphericBackground extends StatelessWidget {
-  const _AtmosphericBackground();
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Base sólida quase preta.
-        Container(color: AppColors.background),
-        // Wash único do degradê da marca, esmaecendo de cima pra baixo
-        // até se fundir com o fundo — mesma sequência de cores do botão.
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                AppColors.loginPurpleTop.withOpacity(0.32),
-                AppColors.loginBlueMid.withOpacity(0.16),
-                AppColors.background,
-              ],
-              stops: const [0.0, 0.32, 0.68],
-            ),
-          ),
-        ),
-        // Glow único e discreto atrás da logo, reforçando o degradê
-        // sem criar "bolhas" espalhadas.
-        Align(
-          alignment: const Alignment(0, -0.55),
-          child: _glowCircle(340, AppColors.loginBlueMid.withOpacity(0.20)),
-        ),
-        // Glow discreto logo acima da ficha de acesso, na mesma cor
-        // escura do fim do degradê — é o que faz o fundo "conversar"
-        // com a caixinha de entrar.
-        Align(
-          alignment: const Alignment(0, 0.9),
-          child: _glowCircle(460, AppColors.loginBlueDark.withOpacity(0.30)),
-        ),
-      ],
-    );
-  }
-
-  Widget _glowCircle(double size, Color color) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(colors: [color, Colors.transparent]),
       ),
     );
   }
@@ -190,6 +140,7 @@ class _AccessSheet extends StatelessWidget {
   final String? errorMessage;
   final VoidCallback onToggleObscurePassword;
   final VoidCallback onSubmit;
+  final VoidCallback onGoToSignup;
 
   const _AccessSheet({
     required this.formKey,
@@ -200,6 +151,7 @@ class _AccessSheet extends StatelessWidget {
     required this.errorMessage,
     required this.onToggleObscurePassword,
     required this.onSubmit,
+    required this.onGoToSignup,
   });
 
   @override
@@ -357,20 +309,23 @@ class _AccessSheet extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Center(
-                    child: RichText(
-                      text: TextSpan(
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                        children: [
-                          const TextSpan(text: 'Ainda não é cliente? '),
-                          TextSpan(
-                            text: 'Abra sua conta',
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w700,
-                              decoration: TextDecoration.underline,
+                    child: GestureDetector(
+                      onTap: onGoToSignup,
+                      child: RichText(
+                        text: TextSpan(
+                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                          children: [
+                            const TextSpan(text: 'Ainda não é cliente? '),
+                            TextSpan(
+                              text: 'Abra sua conta',
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w700,
+                                decoration: TextDecoration.underline,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),

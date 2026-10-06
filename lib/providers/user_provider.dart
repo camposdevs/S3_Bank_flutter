@@ -42,6 +42,14 @@ class UserProvider extends ChangeNotifier {
     return remaining < 0 ? 0 : remaining;
   }
 
+  /// Atualiza o nome do usuário (ex: ao concluir o cadastro).
+  void updateName(String newName) {
+    final trimmed = newName.trim();
+    if (trimmed.isEmpty || trimmed == name) return;
+    name = trimmed;
+    notifyListeners();
+  }
+
   /// Chamado sempre que o usuário faz um aporte na área "Guardar Dinheiro".
   /// Cada real guardado gera pontos de constância; aportes recorrentes
   /// pesam mais do que um único aporte grande (incentivo a hábito, não

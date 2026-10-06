@@ -6,10 +6,12 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/pix_payload_generator.dart';
 import '../../core/theme/app_colors.dart';
 import '../../widgets/gradient_button.dart';
+import '../../widgets/success_dialog.dart';
 import '../../providers/pix_keys_provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../widgets/transaction_tile.dart';
 import '../../models/transaction.dart';
+
 
 // Dados fixos usados na geração da cobrança (ideal: vir do usuário logado).
 // A chave Pix agora vem de "Minhas Chaves" (PixKeysProvider.primaryKey).

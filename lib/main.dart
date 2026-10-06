@@ -8,7 +8,7 @@ import 'providers/pix_keys_provider.dart';
 import 'providers/savings_provider.dart';
 import 'providers/user_provider.dart';
 import 'providers/wallet_provider.dart';
-import 'screens/auth_gate.dart';
+import 'screens/splash_screen.dart';
 
 void main() {
   runApp(const S3BankApp());
@@ -37,7 +37,7 @@ class S3BankApp extends StatelessWidget {
         title: 'S3 Bank',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.dark,
-        home: const AuthGate(),
+        home: const SplashScreen(),
       ),
     );
   }

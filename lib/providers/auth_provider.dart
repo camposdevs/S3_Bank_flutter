@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 /// não decide como (e se) vai persistir isso.
 ///
 /// TODO(autenticação real): quando for integrar login de verdade
-/// (com ou sem backend), troque só o corpo de [signIn]/[signOut] —
+/// (com ou sem backend), troque só o corpo de [signIn]/[signUp]/[signOut] —
 /// a assinatura pode continuar igual, então nenhuma tela muda.
 class AuthProvider extends ChangeNotifier {
   bool _isLoggedIn = false;
@@ -22,13 +22,32 @@ class AuthProvider extends ChangeNotifier {
     if (identifier.trim().isEmpty) return 'Informe seu CPF ou e-mail';
     if (password.length < 4) return 'Senha muito curta';
 
-    // Simula uma latência de rede pra a UI de loading fazer sentido.
     await Future.delayed(const Duration(milliseconds: 700));
 
     _isLoggedIn = true;
     _loginIdentifier = identifier.trim();
     notifyListeners();
     return null; // null = sucesso
+  }
+
+  /// Cadastro de conta nova — também só valida formato, sem persistir
+  /// em lugar nenhum. Igual ao [signIn], já loga o usuário direto
+  /// depois de "criar a conta" com sucesso.
+  Future<String?> signUp({
+    required String name,
+    required String identifier,
+    required String password,
+  }) async {
+    if (name.trim().isEmpty) return 'Informe seu nome completo';
+    if (identifier.trim().isEmpty) return 'Informe seu CPF ou e-mail';
+    if (password.length < 4) return 'Senha muito curta';
+
+    await Future.delayed(const Duration(milliseconds: 900));
+
+    _isLoggedIn = true;
+    _loginIdentifier = identifier.trim();
+    notifyListeners();
+    return null;
   }
 
   void signOut() {
