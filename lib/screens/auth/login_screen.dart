@@ -3,15 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
-import '../../widgets/atmospheric_background.dart';
+import '../../widgets/auth_widgets.dart';
+import '../../widgets/gradient_button.dart';
+import 'forgot_password_screen.dart';
 import 'signup_screen.dart';
 
-/// Tela de login inspirada na estrutura do app do C6 Bank: um cenário
-/// de fundo em tela cheia (lá é uma foto; aqui, um "cenário atmosférico"
-/// feito só com o degradê da marca, já que não temos uma foto real) com
-/// a marca em destaque no topo, e uma ficha de acesso ancorada na parte
-/// de baixo da tela (cantos arredondados só em cima, sem flutuar como
-/// cartão) com efeito de vidro fosco sobre o cenário.
+/// Tela de login: fundo escuro com brilhos da paleta da marca, logo e
+/// mensagem de boas-vindas no topo, e uma ficha de acesso em vidro fosco
+/// ancorada na base da tela.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -65,22 +64,34 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _goToForgotPassword() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ForgotPasswordScreen(
+          initialIdentifier: _loginController.text,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          const AtmosphericBackground(),
+          const AuthBackdrop(),
           SafeArea(
             bottom: false,
             child: Column(
               children: [
-                const Expanded(
+                Expanded(
                   child: Padding(
-                    padding: EdgeInsets.only(top: 48),
-                    child: _BrandHeader(),
+                    padding: EdgeInsets.fromLTRB(28, keyboardOpen ? 16 : 40, 28, 0),
+                    child: _Hero(compact: keyboardOpen),
                   ),
                 ),
                 _AccessSheet(
@@ -92,6 +103,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   errorMessage: _errorMessage,
                   onToggleObscurePassword: _toggleObscurePassword,
                   onSubmit: _submit,
+                  onForgotPassword: _goToForgotPassword,
                   onGoToSignup: _goToSignup,
                 ),
               ],
@@ -103,34 +115,54 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-/// Marca centralizada na parte de cima do cenário — mesma posição que
-/// o logo do C6 ocupa sobre a foto.
-class _BrandHeader extends StatelessWidget {
-  const _BrandHeader();
+/// Parte de cima: logo centralizado e, embaixo dele, a mensagem de
+/// boas-vindas alinhada à esquerda (some quando o teclado abre).
+class _Hero extends StatelessWidget {
+  final bool compact;
+
+  const _Hero({required this.compact});
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Image.asset(
-          'assets/images/logo.png',
-          width: 190,
-          fit: BoxFit.contain,
+        Center(
+          child: Image.asset(
+            'assets/images/logo.png',
+            width: compact ? 130 : 170,
+            fit: BoxFit.contain,
+          ),
         ),
-        const SizedBox(height: 10),
-        const Text(
-          'Sua conta, seu ritmo.',
-          style: TextStyle(color: Colors.white70, fontSize: 13),
-        ),
+        if (!compact) ...[
+          const Spacer(),
+          const Text(
+            'Que bom te ver\nde novo.',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 32,
+              fontWeight: FontWeight.w800,
+              height: 1.15,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Acesse sua conta e acompanhe sua evolução, aporte a aporte.',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 14,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 28),
+        ],
       ],
     );
   }
 }
 
-/// Ficha de acesso ancorada na base da tela, com efeito de vidro fosco
-/// desfocando o cenário atrás dela — mesma lógica do painel do C6, só
-/// que aqui sobre o degradê em vez de uma foto.
+/// Ficha de acesso ancorada na base da tela, com vidro fosco.
 class _AccessSheet extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final TextEditingController loginController;
@@ -140,6 +172,7 @@ class _AccessSheet extends StatelessWidget {
   final String? errorMessage;
   final VoidCallback onToggleObscurePassword;
   final VoidCallback onSubmit;
+  final VoidCallback onForgotPassword;
   final VoidCallback onGoToSignup;
 
   const _AccessSheet({
@@ -151,11 +184,14 @@ class _AccessSheet extends StatelessWidget {
     required this.errorMessage,
     required this.onToggleObscurePassword,
     required this.onSubmit,
+    required this.onForgotPassword,
     required this.onGoToSignup,
   });
 
   @override
   Widget build(BuildContext context) {
+    final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       child: BackdropFilter(
@@ -164,14 +200,12 @@ class _AccessSheet extends StatelessWidget {
           width: double.infinity,
           padding: EdgeInsets.fromLTRB(
             24,
-            20,
             24,
-            MediaQuery.of(context).viewInsets.bottom > 0
-                ? 20
-                : MediaQuery.of(context).padding.bottom + 24,
+            24,
+            keyboardOpen ? 20 : MediaQuery.of(context).padding.bottom + 24,
           ),
           decoration: BoxDecoration(
-            color: AppColors.surface.withOpacity(0.82),
+            color: AppColors.surface.withOpacity(0.86),
             border: Border(
               top: BorderSide(color: Colors.white.withOpacity(0.08)),
             ),
@@ -183,41 +217,35 @@ class _AccessSheet extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      margin: const EdgeInsets.only(bottom: 18),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    ),
-                  ),
                   const Text(
                     'Acesse sua conta',
                     style: TextStyle(
                       color: AppColors.textPrimary,
-                      fontSize: 19,
+                      fontSize: 18,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(height: 18),
-                  _AccessField(
+                  AuthTextField(
                     controller: loginController,
                     label: 'CPF ou e-mail',
                     icon: Icons.person_outline,
                     keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
                     validator: (v) => (v == null || v.trim().isEmpty)
                         ? 'Informe seu CPF ou e-mail'
                         : null,
                   ),
                   const SizedBox(height: 12),
-                  _AccessField(
+                  AuthTextField(
                     controller: passwordController,
                     label: 'Senha',
                     icon: Icons.lock_outline,
                     obscureText: obscurePassword,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) {
+                      if (!loading) onSubmit();
+                    },
                     validator: (v) =>
                         (v == null || v.length < 4) ? 'Senha muito curta' : null,
                     suffixIcon: IconButton(
@@ -231,15 +259,16 @@ class _AccessSheet extends StatelessWidget {
                       onPressed: onToggleObscurePassword,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
-                      onPressed: () {},
+                      onPressed: onForgotPassword,
                       style: TextButton.styleFrom(
                         foregroundColor: AppColors.accentLight,
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(0, 32),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        minimumSize: const Size(0, 36),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       child: const Text(
                         'Esqueci minha senha',
@@ -247,78 +276,27 @@ class _AccessSheet extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   if (errorMessage != null) ...[
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: AppColors.danger.withOpacity(0.14),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        errorMessage!,
-                        style: const TextStyle(
-                          color: AppColors.danger,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
+                    AuthErrorBanner(message: errorMessage!),
                     const SizedBox(height: 10),
                   ],
-                  Container(
-                    height: 52,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      gradient: AppColors.loginGradient,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.loginBlueMid.withOpacity(0.45),
-                          blurRadius: 18,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(14),
-                        onTap: loading ? null : onSubmit,
-                        child: Center(
-                          child: loading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.4,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Text(
-                                  'ENTRAR',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                        ),
-                      ),
-                    ),
+                  GradientButton(
+                    label: loading ? 'ENTRANDO...' : 'ENTRAR',
+                    onTap: loading ? null : onSubmit,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
                   Center(
                     child: GestureDetector(
                       onTap: onGoToSignup,
                       child: RichText(
-                        text: TextSpan(
-                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                        text: const TextSpan(
+                          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                           children: [
-                            const TextSpan(text: 'Ainda não é cliente? '),
+                            TextSpan(text: 'Ainda não é cliente? '),
                             TextSpan(
                               text: 'Abra sua conta',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppColors.textPrimary,
                                 fontWeight: FontWeight.w700,
                                 decoration: TextDecoration.underline,
@@ -334,63 +312,6 @@ class _AccessSheet extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// Campo de texto no estilo padrão do app (superfície escura elevada),
-/// já que agora a ficha fica sobre o painel de vidro, não sobre um
-/// cartão colorido.
-class _AccessField extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
-  final bool obscureText;
-  final TextInputType? keyboardType;
-  final String? Function(String?)? validator;
-  final Widget? suffixIcon;
-
-  const _AccessField({
-    required this.controller,
-    required this.label,
-    required this.icon,
-    this.obscureText = false,
-    this.keyboardType,
-    this.validator,
-    this.suffixIcon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      validator: validator,
-      style: const TextStyle(color: AppColors.textPrimary, fontSize: 14.5),
-      cursorColor: AppColors.accentLight,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13.5),
-        prefixIcon: Icon(icon, color: AppColors.textSecondary, size: 20),
-        suffixIcon: suffixIcon,
-        filled: true,
-        fillColor: AppColors.surfaceElevated,
-        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: AppColors.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.accentLight, width: 1.4),
-        ),
-        errorStyle: const TextStyle(color: AppColors.danger, fontSize: 11),
       ),
     );
   }
