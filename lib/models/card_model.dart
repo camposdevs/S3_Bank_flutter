@@ -35,9 +35,9 @@ class CardModel {
     return buffer.toString();
   }
 
-  CardModel copyWith({UserTier? tier}) {
+  CardModel copyWith({UserTier? tier, String? holderName}) {
     return CardModel(
-      holderName: holderName,
+      holderName: holderName ?? this.holderName,
       cardNumber: cardNumber,
       expiry: expiry,
       cvv: cvv,

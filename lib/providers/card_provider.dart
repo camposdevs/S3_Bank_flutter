@@ -29,4 +29,13 @@ class CardProvider extends ChangeNotifier {
     _card = _card.copyWith(tier: tier);
     notifyListeners();
   }
+
+  /// Mantém o nome impresso no cartão em sincronia com [UserProvider]
+  /// (ex: depois do cadastro). Nomes vazios ou iguais são ignorados.
+  void updateHolderName(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty || trimmed == _card.holderName) return;
+    _card = _card.copyWith(holderName: trimmed);
+    notifyListeners();
+  }
 }
