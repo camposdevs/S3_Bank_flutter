@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
-import '../widgets/atmospheric_background.dart';
+import '../widgets/auth_widgets.dart';
 import 'auth_gate.dart';
 
-/// Tela de abertura do app: logo sobre o mesmo cenário atmosférico do
+/// Tela de abertura do app: logo sobre o mesmo fundo do
 /// login, com uma breve espera antes de decidir pra onde ir (login ou
 /// direto pro app, via [AuthGate]). Puramente cosmético — não checa
 /// nenhuma sessão salva, já que a autenticação é só em memória.
@@ -33,7 +33,7 @@ class _SplashScreenState extends State<SplashScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          const AtmosphericBackground(),
+          const AuthBackdrop(),
           Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,

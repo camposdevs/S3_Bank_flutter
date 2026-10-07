@@ -193,6 +193,12 @@ class PixKeysProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Remove as chaves de exemplo para um cadastro novo.
+  void resetForNewAccount() {
+    _keys.clear();
+    notifyListeners();
+  }
+
   void removeKey(String id) {
     _keys.removeWhere((k) => k.id == id);
     notifyListeners();

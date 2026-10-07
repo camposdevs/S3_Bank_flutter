@@ -24,6 +24,14 @@ class WalletProvider extends ChangeNotifier {
   bool get balanceVisible => _balanceVisible;
   List<Transaction> get transactions => List.unmodifiable(_transactions);
 
+  /// Zera a conta (saldo e extrato) para um cadastro novo, em vez de
+  /// herdar os dados de exemplo da conta demo.
+  void resetForNewAccount() {
+    _balance = 0;
+    _transactions.clear();
+    notifyListeners();
+  }
+
   void toggleBalanceVisibility() {
     _balanceVisible = !_balanceVisible;
     notifyListeners();

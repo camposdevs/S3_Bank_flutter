@@ -28,6 +28,12 @@ class SavingsProvider extends ChangeNotifier {
     return totalSaved * monthlyRate;
   }
 
+  /// Remove as caixinhas de exemplo para um cadastro novo.
+  void resetForNewAccount() {
+    _goals.clear();
+    notifyListeners();
+  }
+
   void createGoal({
     required String name,
     required IconData icon,

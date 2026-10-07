@@ -167,6 +167,16 @@ class DashboardScreen extends StatelessWidget {
               ),
             ],
           ),
+          if (wallet.transactions.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Text(
+                  'Nenhuma movimentação ainda.',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              ),
+            ),
           ...wallet.transactions
               .take(3)
               .map((t) => TransactionTile(transaction: t)),

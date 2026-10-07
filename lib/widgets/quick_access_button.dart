@@ -47,13 +47,21 @@ class QuickAccessButton extends StatelessWidget {
               child: Icon(icon, color: Colors.white, size: iconSize),
             ),
             const SizedBox(height: 10),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+            // Altura mínima de 2 linhas: mantém todos os cards do mesmo
+            // tamanho, mesmo quando o rótulo tem só uma linha.
+            ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 32),
+              child: Center(
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    height: 1.3,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
               ),
             ),
           ],

@@ -50,6 +50,16 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Começa um perfil novo do zero: nome informado, nível Bronze e
+  /// nenhum ponto de constância (usado logo após o cadastro).
+  void startNewProfile(String newName) {
+    name = newName.trim();
+    profileImageUrl = '';
+    _tier = UserTier.bronze;
+    _consistencyPoints = 0;
+    notifyListeners();
+  }
+
   /// Chamado sempre que o usuário faz um aporte na área "Guardar Dinheiro".
   /// Cada real guardado gera pontos de constância; aportes recorrentes
   /// pesam mais do que um único aporte grande (incentivo a hábito, não
