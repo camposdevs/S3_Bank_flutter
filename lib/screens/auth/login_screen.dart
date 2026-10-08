@@ -58,6 +58,13 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _obscurePassword = !_obscurePassword);
   }
 
+  /// Preenche as credenciais da conta de demonstração e entra.
+  void _useDemoAccount() {
+    _loginController.text = AuthProvider.demoIdentifier;
+    _passwordController.text = AuthProvider.demoPassword;
+    _submit();
+  }
+
   void _goToSignup() {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const SignupScreen()),
@@ -105,6 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   onSubmit: _submit,
                   onForgotPassword: _goToForgotPassword,
                   onGoToSignup: _goToSignup,
+                  onUseDemo: _useDemoAccount,
                 ),
               ],
             ),
@@ -174,6 +182,7 @@ class _AccessSheet extends StatelessWidget {
   final VoidCallback onSubmit;
   final VoidCallback onForgotPassword;
   final VoidCallback onGoToSignup;
+  final VoidCallback onUseDemo;
 
   const _AccessSheet({
     required this.formKey,
@@ -186,6 +195,7 @@ class _AccessSheet extends StatelessWidget {
     required this.onSubmit,
     required this.onForgotPassword,
     required this.onGoToSignup,
+    required this.onUseDemo,
   });
 
   @override
@@ -304,6 +314,20 @@ class _AccessSheet extends StatelessWidget {
                             ),
                           ],
                         ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Center(
+                    child: TextButton(
+                      onPressed: loading ? null : onUseDemo,
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.accentLight,
+                        disabledForegroundColor: AppColors.textSecondary,
+                      ),
+                      child: const Text(
+                        'Entrar com a conta de demonstração',
+                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),

@@ -123,6 +123,21 @@ class PixKey {
 
   const PixKey({required this.id, required this.type, required this.value});
 
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'type': type.name,
+        'value': value,
+      };
+
+  factory PixKey.fromJson(Map<String, dynamic> json) => PixKey(
+        id: json['id'] as String,
+        type: PixKeyType.values.firstWhere(
+          (t) => t.name == json['type'],
+          orElse: () => PixKeyType.random,
+        ),
+        value: json['value'] as String? ?? '',
+      );
+
   /// Valor exato que vai no campo de chave do payload Pix.
   String get payloadValue => value;
 
@@ -190,6 +205,26 @@ class PixKeysProvider extends ChangeNotifier {
       type: PixKeyType.random,
       value: _generateUuidV4(),
     ));
+    notifyListeners();
+  }
+
+  Map<String, dynamic> toJson() => {
+        'keys': _keys.map((k) => k.toJson()).toList(),
+      };
+
+  void restore(Map<String, dynamic> json) {
+    final list = (json['keys'] as List?) ?? const [];
+    _keys
+      ..clear()
+      ..addAll(list.map((e) => PixKey.fromJson(Map<String, dynamic>.from(e as Map))));
+    notifyListeners();
+  }
+
+  /// Dados de exemplo da conta de demonstração.
+  void loadDemoData() {
+    _keys
+      ..clear()
+      ..addAll(_seedKeys());
     notifyListeners();
   }
 

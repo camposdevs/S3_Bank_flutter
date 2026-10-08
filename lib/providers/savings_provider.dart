@@ -28,6 +28,26 @@ class SavingsProvider extends ChangeNotifier {
     return totalSaved * monthlyRate;
   }
 
+  Map<String, dynamic> toJson() => {
+        'goals': _goals.map((g) => g.toJson()).toList(),
+      };
+
+  void restore(Map<String, dynamic> json) {
+    final list = (json['goals'] as List?) ?? const [];
+    _goals
+      ..clear()
+      ..addAll(list.map((e) => SavingsGoal.fromJson(Map<String, dynamic>.from(e as Map))));
+    notifyListeners();
+  }
+
+  /// Dados de exemplo da conta de demonstração.
+  void loadDemoData() {
+    _goals
+      ..clear()
+      ..addAll(_seedGoals());
+    notifyListeners();
+  }
+
   /// Remove as caixinhas de exemplo para um cadastro novo.
   void resetForNewAccount() {
     _goals.clear();

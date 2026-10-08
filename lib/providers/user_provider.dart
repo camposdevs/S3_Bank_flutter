@@ -60,6 +60,34 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'profileImageUrl': profileImageUrl,
+        'tier': _tier.name,
+        'points': _consistencyPoints,
+      };
+
+  /// Carrega os dados salvos de uma conta (campos ausentes viram padrão).
+  void restore(Map<String, dynamic> json) {
+    name = json['name'] as String? ?? name;
+    profileImageUrl = json['profileImageUrl'] as String? ?? '';
+    _tier = UserTier.values.firstWhere(
+      (t) => t.name == json['tier'],
+      orElse: () => UserTier.bronze,
+    );
+    _consistencyPoints = (json['points'] as num?)?.toInt() ?? 0;
+    notifyListeners();
+  }
+
+  /// Dados de exemplo da conta de demonstração.
+  void loadDemoData() {
+    name = 'Rafaela Souza';
+    profileImageUrl = '';
+    _tier = UserTier.bronze;
+    _consistencyPoints = 120;
+    notifyListeners();
+  }
+
   /// Chamado sempre que o usuário faz um aporte na área "Guardar Dinheiro".
   /// Cada real guardado gera pontos de constância; aportes recorrentes
   /// pesam mais do que um único aporte grande (incentivo a hábito, não

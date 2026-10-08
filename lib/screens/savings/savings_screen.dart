@@ -112,14 +112,7 @@ class SavingsScreen extends StatelessWidget {
     final formKey = GlobalKey<FormState>();
     IconData selectedIcon = Icons.savings_outlined;
 
-    final iconOptions = const [
-      Icons.savings_outlined,
-      Icons.flight_takeoff,
-      Icons.shield_outlined,
-      Icons.directions_car_outlined,
-      Icons.home_outlined,
-      Icons.school_outlined,
-    ];
+    const iconOptions = savingsIconOptions;
 
     showModalBottomSheet(
       context: context,

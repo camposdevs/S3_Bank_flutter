@@ -32,6 +32,32 @@ class WalletProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Map<String, dynamic> toJson() => {
+        'balance': _balance,
+        'balanceVisible': _balanceVisible,
+        'transactions': _transactions.map((t) => t.toJson()).toList(),
+      };
+
+  void restore(Map<String, dynamic> json) {
+    _balance = _round2((json['balance'] as num?)?.toDouble() ?? 0);
+    _balanceVisible = json['balanceVisible'] as bool? ?? true;
+    final list = (json['transactions'] as List?) ?? const [];
+    _transactions
+      ..clear()
+      ..addAll(list.map((e) => Transaction.fromJson(Map<String, dynamic>.from(e as Map))));
+    notifyListeners();
+  }
+
+  /// Dados de exemplo da conta de demonstração.
+  void loadDemoData() {
+    _balance = _round2(3482.17);
+    _balanceVisible = true;
+    _transactions
+      ..clear()
+      ..addAll(_seedTransactions());
+    notifyListeners();
+  }
+
   void toggleBalanceVisibility() {
     _balanceVisible = !_balanceVisible;
     notifyListeners();

@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../providers/auth_provider.dart';
 import '../../widgets/auth_widgets.dart';
 import '../../widgets/gradient_button.dart';
 
@@ -10,11 +12,11 @@ enum _Step { identify, code, newPassword, done }
 /// Recuperação de senha em 3 etapas:
 /// 1. informa CPF/e-mail  2. digita o código recebido  3. define a nova senha.
 ///
-/// TODO(integração-backend): hoje as três etapas são simuladas com um
-/// atraso (Future.delayed). Trocar por chamadas reais à API:
-///  - enviar código para o CPF/e-mail informado;
-///  - validar o código de 6 dígitos;
-///  - gravar a nova senha.
+/// As três etapas usam o [AuthProvider], que confere a conta e grava a
+/// nova senha no aparelho. Como não há servidor de e-mail/SMS, o código
+/// é exibido na própria tela (modo demonstração).
+///
+/// TODO(integração-backend): enviar o código por e-mail/SMS de verdade.
 class ForgotPasswordScreen extends StatefulWidget {
   /// Pré-preenche o campo com o que o usuário já digitou no login.
   final String? initialIdentifier;
@@ -76,9 +78,18 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       _errorMessage = null;
     });
 
-    // TODO(integração-backend): solicitar envio do código.
-    await Future.delayed(const Duration(milliseconds: 900));
+    final error = await context
+        .read<AuthProvider>()
+        .requestPasswordReset(_identifierController.text);
     if (!mounted) return;
+
+    if (error != null) {
+      setState(() {
+        _loading = false;
+        _errorMessage = error;
+      });
+      return;
+    }
 
     setState(() {
       _loading = false;
@@ -94,10 +105,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       _errorMessage = null;
     });
 
-    // TODO(integração-backend): validar o código na API (hoje aceita
-    // qualquer código com 6 dígitos).
-    await Future.delayed(const Duration(milliseconds: 700));
+    final error =
+        await context.read<AuthProvider>().verifyResetCode(_codeController.text);
     if (!mounted) return;
+
+    if (error != null) {
+      setState(() {
+        _loading = false;
+        _errorMessage = error;
+      });
+      return;
+    }
 
     setState(() {
       _loading = false;
@@ -112,9 +130,18 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       _errorMessage = null;
     });
 
-    // TODO(integração-backend): gravar a nova senha (hoje não persiste).
-    await Future.delayed(const Duration(milliseconds: 900));
+    final error = await context
+        .read<AuthProvider>()
+        .resetPassword(_passwordController.text);
     if (!mounted) return;
+
+    if (error != null) {
+      setState(() {
+        _loading = false;
+        _errorMessage = error;
+      });
+      return;
+    }
 
     setState(() {
       _loading = false;
@@ -282,7 +309,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             title: 'Digite o código',
             subtitle: 'Enviamos um código de 6 dígitos para $_maskedIdentifier.',
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+          _DemoCodeBox(code: context.read<AuthProvider>().demoResetCode),
+          const SizedBox(height: 16),
           AuthTextField(
             controller: _codeController,
             label: 'Código de 6 dígitos',
@@ -483,6 +512,50 @@ class _StepHeader extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Mostra o código da recuperação na tela (modo demonstração), já que o
+/// app não tem como enviar e-mail ou SMS de verdade.
+class _DemoCodeBox extends StatelessWidget {
+  final String? code;
+
+  const _DemoCodeBox({required this.code});
+
+  @override
+  Widget build(BuildContext context) {
+    if (code == null) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.accentLight.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.accentLight.withOpacity(0.25)),
+      ),
+      child: Text.rich(
+        TextSpan(
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 12.5,
+            height: 1.4,
+          ),
+          children: [
+            const TextSpan(text: 'Modo demonstração: seu código é '),
+            TextSpan(
+              text: code,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.5,
+              ),
+            ),
+            const TextSpan(
+              text: '. Em um app real, ele chegaria por e-mail ou SMS.',
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

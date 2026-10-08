@@ -1,22 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
-import '../../models/user_tier.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/card_provider.dart';
-import '../../providers/pix_keys_provider.dart';
-import '../../providers/savings_provider.dart';
-import '../../providers/user_provider.dart';
-import '../../providers/wallet_provider.dart';
 import '../../widgets/auth_widgets.dart';
 import '../../widgets/gradient_button.dart';
 
 /// Tela de cadastro — mesma linguagem visual do login e da recuperação
 /// de senha (fundo com brilhos da paleta + cartão de vidro fosco).
 ///
-/// Ao criar a conta com sucesso, o app começa do zero para o novo
-/// usuário (perfil Bronze, sem pontos, saldo zerado, sem caixinhas nem
-/// chaves Pix) e o AuthGate troca de tela sozinho.
+/// Ao criar a conta com sucesso, a conta fica salva no aparelho e o
+/// [AccountDataCoordinator] já começa o app do zero para o novo usuário
+/// (perfil Bronze, sem pontos, saldo zerado, sem caixinhas nem chaves
+/// Pix). O AuthGate troca de tela sozinho.
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
@@ -50,19 +45,13 @@ class _SignupScreenState extends State<SignupScreen> {
       _errorMessage = null;
     });
 
-    // Captura tudo antes do await para não usar o context depois do
-    // gap assíncrono.
+    // Captura antes do await para não usar o context depois do gap
+    // assíncrono.
     final authProvider = context.read<AuthProvider>();
-    final userProvider = context.read<UserProvider>();
-    final cardProvider = context.read<CardProvider>();
-    final walletProvider = context.read<WalletProvider>();
-    final savingsProvider = context.read<SavingsProvider>();
-    final pixKeysProvider = context.read<PixKeysProvider>();
     final navigator = Navigator.of(context);
-    final name = _nameController.text;
 
     final error = await authProvider.signUp(
-      name: name,
+      name: _nameController.text,
       identifier: _identifierController.text,
       password: _passwordController.text,
     );
@@ -70,14 +59,6 @@ class _SignupScreenState extends State<SignupScreen> {
     if (!mounted) return;
 
     if (error == null) {
-      // Conta nova = tudo do zero (nada herdado da conta de exemplo).
-      userProvider.startNewProfile(name);
-      cardProvider.updateHolderName(name);
-      cardProvider.syncTier(UserTier.bronze);
-      walletProvider.resetForNewAccount();
-      savingsProvider.resetForNewAccount();
-      pixKeysProvider.resetForNewAccount();
-
       // Fecha a tela de cadastro (e o login, se estiver empilhado) para
       // revelar o AuthGate, que já mostra a home por causa do isLoggedIn.
       navigator.popUntil((route) => route.isFirst);
