@@ -14,7 +14,6 @@ import '../../widgets/tier_badge.dart';
 import '../../widgets/transaction_tile.dart';
 import '../card/card_screen.dart';
 import '../pix/pix_screen.dart';
-import '../profile/profile_screen.dart';
 import '../savings/savings_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
