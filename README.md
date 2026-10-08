@@ -7,6 +7,7 @@
 ![Provider](https://img.shields.io/badge/State-Provider-6A4CE0?style=for-the-badge)
 ![Material 3](https://img.shields.io/badge/Material_3-Dark-0B0B12?style=for-the-badge&logo=materialdesign&logoColor=B98CFF)
 ![Status](https://img.shields.io/badge/Status-Protótipo_local-3355D3?style=for-the-badge)
+[![CI](https://github.com/camposdevs/S3_Bank_flutter/actions/workflows/flutter.yml/badge.svg)](https://github.com/camposdevs/S3_Bank_flutter/actions/workflows/flutter.yml)
 
 </div>
 
@@ -28,7 +29,7 @@ Roda **100% localmente**, com dados mockados em memória. Nenhum backend necess�
 
 | Área | O que tem |
 |------|-----------|
-| **Acesso** | Login, cadastro e recuperação de senha em 3 etapas (código → nova senha → confirmação) |
+| **Acesso** | Login, cadastro e recuperação de senha em 3 etapas (código → nova senha → confirmação), com contas salvas no aparelho |
 | **Início** | Saldo com opção de ocultar, nível atual, barra de progresso até o próximo nível e extrato |
 | **Pix** | Pagar, receber (QR Code + Pix Copia e Cola no padrão BR Code com CRC16) e gerenciar chaves |
 | **Guardar Dinheiro** | Caixinhas com metas, aportes, resgates e rendimento calculado sobre o CDI do nível |
@@ -74,8 +75,9 @@ Para rodar no navegador:
 flutter run -d chrome
 ```
 
-> **Para entrar no app:** use qualquer CPF ou e-mail e uma senha com 4 ou mais caracteres.
-> A autenticação é simulada e a sessão dura só enquanto o app está aberto.
+> **Para entrar no app:** toque em **"Entrar com a conta de demonstração"** (conta já preenchida com saldo,
+> caixinhas e chaves Pix de exemplo) ou crie a sua em **"Abra sua conta"** (começa zerada).
+> Contas, sessão e dados ficam salvos no aparelho; ao reabrir o app você continua logado.
 
 ---
 
@@ -90,6 +92,7 @@ lib/
 │   ├── theme/                    # AppColors e ThemeData (Material 3, dark)
 │   └── pix_payload_generator.dart # BR Code do Pix (EMV + CRC16)
 ├── models/                       # UserTier, Transaction, SavingsGoal, CardModel
+├── services/                     # armazenamento local e sincronia dos dados por conta
 ├── providers/                    # Auth, User, Wallet, Savings, PixKeys, Card
 ├── widgets/                      # cartão, saldo, badges, botão com gradiente,
 │                                 # fundo e campos das telas de acesso...
@@ -104,7 +107,30 @@ lib/
 │   ├── splash_screen.dart
 │   └── main_navigation_screen.dart # navegação inferior entre as abas
 └── main.dart                     # MultiProvider + MaterialApp
+test/                             # testes automatizados
 ```
+
+---
+
+## Testes
+
+```bash
+flutter test
+```
+
+Os testes cobrem as regras que não podem quebrar sem ninguém perceber:
+
+| Arquivo | O que garante |
+|---------|---------------|
+| `user_tier_test.dart` | Percentuais do CDI, ordem dos níveis, pontos de constância, subida de nível (inclusive vários de uma vez) |
+| `pix_payload_generator_test.dart` | Estrutura do BR Code, tamanhos dos campos, CRC16 conferido por uma implementação independente, limpeza de acentos |
+| `wallet_provider_test.dart` | Envio e recebimento de Pix, saldo insuficiente, valores inválidos, arredondamento de centavos |
+| `savings_and_pix_keys_test.dart` | Rendimento por nível, caixinhas, validação de CPF/e-mail/celular/chave aleatória |
+| `auth_provider_test.dart` | Login, cadastro, contas duplicadas, senha com hash, sessão salva e recuperação de senha |
+| `account_data_test.dart` | Dados salvos por conta, isolamento entre contas e persistência ao reabrir o app |
+
+A cada push, o GitHub Actions roda `flutter analyze` e `flutter test`
+(`.github/workflows/flutter.yml`).
 
 ---
 
@@ -136,14 +162,13 @@ Os pontos estão marcados no código com `TODO(integração-backend)`:
 
 ## Roadmap
 
-- [x] Login, cadastro e recuperação de senha (simulados)
+- [x] Login, cadastro e recuperação de senha (contas locais, senha com hash)
+- [x] Persistência local por conta (`shared_preferences`)
 - [x] Níveis, pontos de constância e cartão que acompanha o nível
 - [x] Pix com QR Code e Copia e Cola
-- [ ] Persistência local (hoje todo o estado se perde ao fechar o app)
-- [ ] Novo usuário começar do zero (hoje herda saldo, metas e pontos de exemplo)
 - [ ] Camada de repositório entre providers e API
-- [ ] Autenticação e backend reais
-- [ ] Testes automatizados
+- [ ] Autenticação e backend reais (hoje tudo é local, sem servidor)
+- [x] Testes automatizados e CI no GitHub Actions
 - [ ] Telas de Dados pessoais, Segurança e Ajuda no perfil
 
 <!--
