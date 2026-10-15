@@ -306,10 +306,10 @@ class _AccessSheet extends StatelessWidget {
                             TextSpan(text: 'Ainda não é cliente? '),
                             TextSpan(
                               text: 'Abra sua conta',
+                              // Mesmo roxo/peso dos outros links da tela.
                               style: TextStyle(
-                                color: AppColors.textPrimary,
-                                fontWeight: FontWeight.w700,
-                                decoration: TextDecoration.underline,
+                                color: AppColors.accentLight,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],

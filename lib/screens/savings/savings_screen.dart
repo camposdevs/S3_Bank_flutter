@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/currency_input_formatter.dart';
 import '../../models/savings_goal.dart';
 import '../../models/user_tier.dart';
 import '../../providers/savings_provider.dart';
@@ -172,11 +173,16 @@ class SavingsScreen extends StatelessWidget {
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: targetController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(labelText: 'Valor alvo (R\$)'),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [CurrencyInputFormatter()],
+                      decoration: const InputDecoration(
+                        labelText: 'Valor alvo (R\$)',
+                        hintText: '0,00',
+                        prefixText: 'R\$ ',
+                      ),
                       validator: (v) {
-                        final value = double.tryParse((v ?? '').replaceAll(',', '.'));
-                        if (value == null || value <= 0) return 'Valor inválido';
+                        final value = CurrencyInputFormatter.parse(v ?? '');
+                        if (value <= 0) return 'Informe um valor maior que zero';
                         return null;
                       },
                     ),
@@ -189,7 +195,7 @@ class SavingsScreen extends StatelessWidget {
                           name: nameController.text.trim(),
                           icon: selectedIcon,
                           targetAmount:
-                              double.parse(targetController.text.replaceAll(',', '.')),
+                              CurrencyInputFormatter.parse(targetController.text),
                         );
                         Navigator.of(ctx).pop();
                       },
@@ -393,11 +399,16 @@ class _GoalCard extends StatelessWidget {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: controller,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Valor (R\$)'),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [CurrencyInputFormatter()],
+                  decoration: const InputDecoration(
+                    labelText: 'Valor (R\$)',
+                    hintText: '0,00',
+                    prefixText: 'R\$ ',
+                  ),
                   validator: (v) {
-                    final value = double.tryParse((v ?? '').replaceAll(',', '.'));
-                    if (value == null || value <= 0) return 'Valor inválido';
+                    final value = CurrencyInputFormatter.parse(v ?? '');
+                    if (value <= 0) return 'Informe um valor maior que zero';
                     if (value > wallet.balance) return 'Saldo insuficiente';
                     return null;
                   },
@@ -407,7 +418,7 @@ class _GoalCard extends StatelessWidget {
                   label: 'Confirmar',
                   onTap: () {
                     if (!formKey.currentState!.validate()) return;
-                    final amount = double.parse(controller.text.replaceAll(',', '.'));
+                    final amount = CurrencyInputFormatter.parse(controller.text);
                     Navigator.of(ctx).pop();
                     _deposit(context, goal, amount);
                   },
@@ -452,11 +463,16 @@ class _GoalCard extends StatelessWidget {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: controller,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Valor (R\$)'),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [CurrencyInputFormatter()],
+                  decoration: const InputDecoration(
+                    labelText: 'Valor (R\$)',
+                    hintText: '0,00',
+                    prefixText: 'R\$ ',
+                  ),
                   validator: (v) {
-                    final value = double.tryParse((v ?? '').replaceAll(',', '.'));
-                    if (value == null || value <= 0) return 'Valor inválido';
+                    final value = CurrencyInputFormatter.parse(v ?? '');
+                    if (value <= 0) return 'Informe um valor maior que zero';
                     if (value > goal.currentAmount) return 'Valor maior que o guardado';
                     return null;
                   },
@@ -466,7 +482,7 @@ class _GoalCard extends StatelessWidget {
                   label: 'Confirmar resgate',
                   onTap: () {
                     if (!formKey.currentState!.validate()) return;
-                    final amount = double.parse(controller.text.replaceAll(',', '.'));
+                    final amount = CurrencyInputFormatter.parse(controller.text);
                     final actual = savings.withdraw(goal.id, amount);
                     wallet.creditFromSavings(actual, goalName: goal.name);
                     Navigator.of(ctx).pop();

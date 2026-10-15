@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/pix_payload_generator.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/currency_input_formatter.dart';
 import '../../providers/pix_keys_provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../widgets/transaction_tile.dart';
@@ -137,9 +138,13 @@ class PixScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [_BrlAmountFormatter()],
-                    decoration: const InputDecoration(labelText: 'Valor (R\$)'),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [CurrencyInputFormatter(maxDigits: 12)],
+                    decoration: const InputDecoration(
+                      labelText: 'Valor (R\$)',
+                      hintText: '0,00',
+                      prefixText: 'R\$ ',
+                    ),
                     validator: (v) {
                       final value = _parseAmount(v);
                       if (value == null || value <= 0) return 'Valor inválido';
@@ -280,9 +285,13 @@ class PixScreen extends StatelessWidget {
           const SizedBox(height: 12),
           TextFormField(
             controller: amountController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [_BrlAmountFormatter()],
-            decoration: const InputDecoration(labelText: 'Valor a cobrar (R\$)'),
+            keyboardType: TextInputType.number,
+            inputFormatters: [CurrencyInputFormatter(maxDigits: 12)],
+            decoration: const InputDecoration(
+              labelText: 'Valor a cobrar (R\$)',
+              hintText: '0,00',
+              prefixText: 'R\$ ',
+            ),
             validator: (v) {
               final value = _parseAmount(v);
               if (value == null || value <= 0) return 'Valor inválido';
@@ -691,60 +700,6 @@ class _CopyIconButtonState extends State<_CopyIconButton> {
         color: AppColors.accentLight,
       ),
       onPressed: _copy,
-    );
-  }
-}
-
-/// Formata valores em reais enquanto digita: 5000 -> 5.000 | 5000,5 -> 5.000,5
-class _BrlAmountFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    var text = newValue.text;
-
-    // Se o teclado mandou "." como separador decimal, trata como vírgula.
-    if (text.endsWith('.') && !text.contains(',')) {
-      text = '${text.substring(0, text.length - 1)},';
-    }
-
-    // Os pontos que existem no texto são só de formatação; removemos.
-    text = text.replaceAll('.', '');
-
-    final commaIndex = text.indexOf(',');
-    final hasComma = commaIndex != -1;
-
-    var intPart = hasComma ? text.substring(0, commaIndex) : text;
-    var decPart = hasComma ? text.substring(commaIndex + 1) : '';
-
-    intPart = intPart.replaceAll(RegExp(r'\D'), '');
-    decPart = decPart.replaceAll(RegExp(r'\D'), '');
-    if (decPart.length > 2) decPart = decPart.substring(0, 2);
-
-    if (intPart.isEmpty && !hasComma) {
-      return const TextEditingValue(text: '');
-    }
-    if (intPart.isEmpty) intPart = '0';
-
-    // Remove zeros à esquerda (007 -> 7)
-    intPart = intPart.replaceFirst(RegExp(r'^0+(?=\d)'), '');
-
-    // O campo de valor do Pix aceita no máximo 13 caracteres (9999999999.99),
-    // então limitamos a parte inteira a 10 dígitos.
-    if (intPart.length > 10) return oldValue;
-
-    // Agrupa de 3 em 3 com ponto
-    final grouped = intPart.replaceAllMapped(
-      RegExp(r'\B(?=(\d{3})+(?!\d))'),
-      (_) => '.',
-    );
-
-    final formatted = hasComma ? '$grouped,$decPart' : grouped;
-
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }
