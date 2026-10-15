@@ -509,10 +509,14 @@ class PixScreen extends StatelessWidget {
                         items: PixKeyType.values
                             .map((t) => DropdownMenuItem(value: t, child: Text(t.label)))
                             .toList(),
+                        // CORREÇÃO: removido formKey.currentState?.reset(), que
+                        // resetava o próprio dropdown de volta para "E-mail".
+                        // O campo de texto abaixo é recriado via ValueKey, o que
+                        // já limpa o erro de validação ao trocar o tipo.
                         onChanged: (v) {
-                          setState(() => selectedType = v ?? PixKeyType.email);
+                          if (v == null) return;
                           valueController.clear();
-                          formKey.currentState?.reset();
+                          setState(() => selectedType = v);
                         },
                         decoration: const InputDecoration(labelText: 'Tipo de chave'),
                       ),
@@ -524,6 +528,7 @@ class PixScreen extends StatelessWidget {
                         )
                       else
                         TextFormField(
+                          key: ValueKey(selectedType),
                           controller: valueController,
                           keyboardType: selectedType.keyboardType,
                           decoration: InputDecoration(
