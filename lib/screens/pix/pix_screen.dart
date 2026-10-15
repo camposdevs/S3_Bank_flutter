@@ -7,14 +7,16 @@ import '../../core/pix_payload_generator.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/currency_input_formatter.dart';
 import '../../providers/pix_keys_provider.dart';
+import '../../providers/user_provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../widgets/transaction_tile.dart';
 import '../../models/transaction.dart';
 
 
-// Dados fixos usados na geração da cobrança (ideal: vir do usuário logado).
-// A chave Pix agora vem de "Minhas Chaves" (PixKeysProvider.primaryKey).
-const _kMerchantName = 'Rafaela Souza';
+// Dados usados na geração da cobrança. O nome do recebedor vem do usuário
+// logado (UserProvider.name) e a chave Pix de "Minhas Chaves"
+// (PixKeysProvider.primaryKey). A cidade ainda é fixa porque o cadastro não
+// coleta esse dado.
 const _kMerchantCity = 'SAO PAULO';
 
 final _currencyFmt = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
@@ -184,6 +186,7 @@ class PixScreen extends StatelessWidget {
   void _showReceiveModal(BuildContext context) {
     final wallet = context.read<WalletProvider>();
     final receiveKey = context.read<PixKeysProvider>().primaryKey;
+    final merchantName = context.read<UserProvider>().name;
     if (receiveKey == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -232,7 +235,7 @@ class PixScreen extends StatelessWidget {
                           final sender = senderController.text.trim();
                           final payload = PixPayloadGenerator.generate(
                             pixKey: receiveKey.payloadValue,
-                            merchantName: _kMerchantName,
+                            merchantName: merchantName,
                             merchantCity: _kMerchantCity,
                             amount: amount,
                             description: sender.isEmpty ? null : 'Cobranca de $sender',
