@@ -31,7 +31,7 @@ class ProfileScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.loginBlueMid.withOpacity(0.35),
+                    color: AppColors.loginBlueMid.withValues(alpha: 0.35),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -41,7 +41,7 @@ class ProfileScreen extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 34,
-                    backgroundColor: Colors.white.withOpacity(0.18),
+                    backgroundColor: Colors.white.withValues(alpha: 0.18),
                     child: Text(
                       user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
                       style: const TextStyle(

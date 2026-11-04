@@ -57,8 +57,8 @@ class _Glow extends StatelessWidget {
         shape: BoxShape.circle,
         gradient: RadialGradient(
           colors: [
-            color.withOpacity(opacity),
-            color.withOpacity(0),
+            color.withValues(alpha: opacity),
+            color.withValues(alpha: 0),
           ],
         ),
       ),
@@ -83,9 +83,9 @@ class AuthGlassCard extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 20),
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
-            color: AppColors.surface.withOpacity(0.82),
+            color: AppColors.surface.withValues(alpha: 0.82),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withOpacity(0.08)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
           ),
           child: child,
         ),
@@ -171,7 +171,7 @@ class AuthErrorBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.danger.withOpacity(0.14),
+        color: AppColors.danger.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(

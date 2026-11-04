@@ -80,7 +80,7 @@ class LevelProgressBar extends StatelessWidget {
                     gradient: AppColors.loginGradient,
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.loginBlueMid.withOpacity(0.5),
+                        color: AppColors.loginBlueMid.withValues(alpha: 0.5),
                         blurRadius: 8,
                       ),
                     ],

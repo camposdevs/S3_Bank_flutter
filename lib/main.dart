@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'models/user_tier.dart';
@@ -14,6 +15,9 @@ import 'services/local_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // App de banco: só em pé (retrato), como a maioria dos apps financeiros.
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   final store = await LocalStore.create();
 

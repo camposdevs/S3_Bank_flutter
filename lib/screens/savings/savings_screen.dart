@@ -39,7 +39,7 @@ class SavingsScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.loginBlueMid.withOpacity(0.3),
+                    color: AppColors.loginBlueMid.withValues(alpha: 0.3),
                     blurRadius: 18,
                     offset: const Offset(0, 8),
                   ),

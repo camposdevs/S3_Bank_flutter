@@ -35,10 +35,10 @@ class DigitalCardWidget extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: gradientColors,
         ),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
         boxShadow: [
           BoxShadow(
-            color: gradientColors.last.withOpacity(0.4),
+            color: gradientColors.last.withValues(alpha: 0.4),
             blurRadius: 28,
             offset: const Offset(0, 14),
           ),
@@ -138,7 +138,7 @@ class _ChipAndContactless extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 10),
-        Icon(Icons.wifi, color: Colors.white.withOpacity(0.9), size: 20),
+        Icon(Icons.wifi, color: Colors.white.withValues(alpha: 0.9), size: 20),
       ],
     );
   }

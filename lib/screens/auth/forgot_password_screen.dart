@@ -457,7 +457,7 @@ class _StepIndicator extends StatelessWidget {
             decoration: BoxDecoration(
               color: active
                   ? AppColors.accentLight
-                  : Colors.white.withOpacity(0.10),
+                  : Colors.white.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(999),
             ),
           ),
@@ -488,7 +488,7 @@ class _StepHeader extends StatelessWidget {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: AppColors.accentLight.withOpacity(0.14),
+            color: AppColors.accentLight.withValues(alpha: 0.14),
             borderRadius: BorderRadius.circular(14),
           ),
           child: Icon(icon, color: AppColors.accentLight, size: 24),
@@ -529,9 +529,9 @@ class _DemoCodeBox extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.accentLight.withOpacity(0.10),
+        color: AppColors.accentLight.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.accentLight.withOpacity(0.25)),
+        border: Border.all(color: AppColors.accentLight.withValues(alpha: 0.25)),
       ),
       child: Text.rich(
         TextSpan(

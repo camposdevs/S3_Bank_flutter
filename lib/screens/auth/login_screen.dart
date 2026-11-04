@@ -93,28 +93,38 @@ class _LoginScreenState extends State<LoginScreen> {
           const AuthBackdrop(),
           SafeArea(
             bottom: false,
-            child: Column(
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(28, keyboardOpen ? 16 : 40, 28, 0),
-                    child: _Hero(compact: keyboardOpen),
+            // LayoutBuilder: limita a ficha de acesso a 85% da área útil.
+            // Se ela não couber (tela pequena, fonte grande, teclado
+            // aberto), rola por dentro em vez de estourar a tela.
+            child: LayoutBuilder(
+              builder: (context, constraints) => Column(
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                          28, keyboardOpen ? 16 : 40, 28, 0),
+                      child: _Hero(compact: keyboardOpen),
+                    ),
                   ),
-                ),
-                _AccessSheet(
-                  formKey: _formKey,
-                  loginController: _loginController,
-                  passwordController: _passwordController,
-                  obscurePassword: _obscurePassword,
-                  loading: _loading,
-                  errorMessage: _errorMessage,
-                  onToggleObscurePassword: _toggleObscurePassword,
-                  onSubmit: _submit,
-                  onForgotPassword: _goToForgotPassword,
-                  onGoToSignup: _goToSignup,
-                  onUseDemo: _useDemoAccount,
-                ),
-              ],
+                  ConstrainedBox(
+                    constraints:
+                        BoxConstraints(maxHeight: constraints.maxHeight * 0.85),
+                    child: _AccessSheet(
+                      formKey: _formKey,
+                      loginController: _loginController,
+                      passwordController: _passwordController,
+                      obscurePassword: _obscurePassword,
+                      loading: _loading,
+                      errorMessage: _errorMessage,
+                      onToggleObscurePassword: _toggleObscurePassword,
+                      onSubmit: _submit,
+                      onForgotPassword: _goToForgotPassword,
+                      onGoToSignup: _goToSignup,
+                      onUseDemo: _useDemoAccount,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -132,40 +142,52 @@ class _Hero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Center(
-          child: Image.asset(
-            'assets/images/logo.png',
-            width: compact ? 130 : 170,
-            fit: BoxFit.contain,
+    // LayoutBuilder + scroll: em telas baixas (ou com fonte grande) o
+    // conteúdo rola em vez de estourar ("BOTTOM OVERFLOWED").
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: IntrinsicHeight(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    width: compact ? 130 : 170,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                if (!compact) ...[
+                  const Spacer(),
+                  const Text(
+                    'Que bom te ver\nde novo.',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                      height: 1.15,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Acesse sua conta e acompanhe sua evolução, aporte a aporte.',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                ],
+              ],
+            ),
           ),
         ),
-        if (!compact) ...[
-          const Spacer(),
-          const Text(
-            'Que bom te ver\nde novo.',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 32,
-              fontWeight: FontWeight.w800,
-              height: 1.15,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Acesse sua conta e acompanhe sua evolução, aporte a aporte.',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 14,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 28),
-        ],
-      ],
+      ),
     );
   }
 }
@@ -215,9 +237,9 @@ class _AccessSheet extends StatelessWidget {
             keyboardOpen ? 20 : MediaQuery.of(context).padding.bottom + 24,
           ),
           decoration: BoxDecoration(
-            color: AppColors.surface.withOpacity(0.86),
+            color: AppColors.surface.withValues(alpha: 0.86),
             border: Border(
-              top: BorderSide(color: Colors.white.withOpacity(0.08)),
+              top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
             ),
           ),
           child: SingleChildScrollView(

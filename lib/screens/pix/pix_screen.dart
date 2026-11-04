@@ -505,7 +505,7 @@ class PixScreen extends StatelessWidget {
                           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<PixKeyType>(
-                        value: selectedType,
+                        initialValue: selectedType,
                         items: PixKeyType.values
                             .map((t) => DropdownMenuItem(value: t, child: Text(t.label)))
                             .toList(),
@@ -648,7 +648,7 @@ class _GradientButton extends StatelessWidget {
           gradient: AppColors.loginGradient,
           boxShadow: [
             BoxShadow(
-              color: AppColors.loginBlueMid.withOpacity(0.4),
+              color: AppColors.loginBlueMid.withValues(alpha: 0.4),
               blurRadius: 16,
               offset: const Offset(0, 8),
             ),
