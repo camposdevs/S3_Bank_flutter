@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../../animations/animations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/card_provider.dart';
 import '../../widgets/digital_card_widget.dart';
@@ -29,7 +30,8 @@ class _CardScreenState extends State<CardScreen> {
             DigitalCardWidget(card: card, showDetails: _showDetails),
             const SizedBox(height: 16),
             Center(
-              child: OutlinedButton.icon(
+              child: TapScale(
+                child: OutlinedButton.icon(
                 onPressed: () => setState(() => _showDetails = !_showDetails),
                 icon: Icon(
                   _showDetails ? Icons.visibility_off_outlined : Icons.visibility_outlined,
@@ -47,6 +49,7 @@ class _CardScreenState extends State<CardScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
                 ),
               ),
+              ),
             ),
             const SizedBox(height: 20),
             ClipRRect(
@@ -63,7 +66,7 @@ class _CardScreenState extends State<CardScreen> {
                     Container(height: 3, decoration: const BoxDecoration(gradient: AppColors.loginGradient)),
                     _CopyRow(
                       label: 'Número do cartão',
-                      value: card.groupedNumber,
+                      value: _showDetails ? card.groupedNumber : card.maskedNumber,
                       onCopy: () => _copyToClipboard(context, card.groupedNumber, 'Número'),
                     ),
                     const Divider(height: 1, color: AppColors.border),
@@ -75,7 +78,7 @@ class _CardScreenState extends State<CardScreen> {
                     const Divider(height: 1, color: AppColors.border),
                     _CopyRow(
                       label: 'CVV',
-                      value: card.cvv,
+                      value: _showDetails ? card.cvv : '•••',
                       onCopy: () => _copyToClipboard(context, card.cvv, 'CVV'),
                     ),
                   ],

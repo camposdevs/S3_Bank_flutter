@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../models/savings_goal.dart';
 import '../models/user_tier.dart';
 
+/// Arredonda para centavos (evita 0.1 + 0.2 = 0.30000000000000004).
+double _round2(double value) => (value * 100).round() / 100;
+
 /// Gerencia as caixinhas/objetivos de "Guardar Dinheiro" e calcula o
 /// rendimento simulado com base no nível (tier) atual do usuário.
 /// TODO(integração-backend): substituir cálculo de rendimento local por
@@ -19,7 +22,7 @@ class SavingsProvider extends ChangeNotifier {
   List<SavingsGoal> get goals => List.unmodifiable(_goals);
 
   double get totalSaved =>
-      _goals.fold(0.0, (sum, goal) => sum + goal.currentAmount);
+      _round2(_goals.fold(0.0, (sum, goal) => sum + goal.currentAmount));
 
   /// Rendimento estimado do mês corrente, com base no total guardado
   /// e no percentual do CDI do nível do usuário.
@@ -73,20 +76,24 @@ class SavingsProvider extends ChangeNotifier {
   }
 
   void deposit(String goalId, double amount) {
+    final value = _round2(amount);
+    if (value <= 0) return;
     final index = _goals.indexWhere((g) => g.id == goalId);
     if (index == -1) return;
     final goal = _goals[index];
-    _goals[index] = goal.copyWith(currentAmount: goal.currentAmount + amount);
+    _goals[index] = goal.copyWith(currentAmount: _round2(goal.currentAmount + value));
     notifyListeners();
   }
 
   /// Retorna o valor efetivamente resgatado (limitado ao saldo da caixinha).
   double withdraw(String goalId, double amount) {
+    final value = _round2(amount);
+    if (value <= 0) return 0;
     final index = _goals.indexWhere((g) => g.id == goalId);
     if (index == -1) return 0;
     final goal = _goals[index];
-    final actual = amount > goal.currentAmount ? goal.currentAmount : amount;
-    _goals[index] = goal.copyWith(currentAmount: goal.currentAmount - actual);
+    final actual = value > goal.currentAmount ? goal.currentAmount : value;
+    _goals[index] = goal.copyWith(currentAmount: _round2(goal.currentAmount - actual));
     notifyListeners();
     return actual;
   }

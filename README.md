@@ -33,8 +33,9 @@ Roda **100% localmente**, com dados mockados em memória. Nenhum backend necess�
 | **Início** | Saldo com opção de ocultar, nível atual, barra de progresso até o próximo nível e extrato |
 | **Pix** | Pagar, receber (QR Code + Pix Copia e Cola no padrão BR Code com CRC16) e gerenciar chaves |
 | **Guardar Dinheiro** | Caixinhas com metas, aportes, resgates e rendimento calculado sobre o CDI do nível |
-| **Cartão digital** | Cartão com visual do nível, dados mascarados e opção de bloquear |
-| **Perfil** | Nome, nível e saída da conta |
+| **Cartão digital** | Cartão com visual do nível e dados mascarados (número e CVV só aparecem ao tocar em "Mostrar dados") |
+| **Perfil** | Nome, nível e saída da conta (abre ao tocar no avatar do início) |
+| **Extrato** | Todas as movimentações (Pix e caixinhas), aberto por "Ver tudo" no início |
 
 ---
 
@@ -60,7 +61,7 @@ Definido em `models/user_tier.dart` (`enum UserTier` + extension com as regras d
 
 ## Como rodar
 
-**Pré-requisitos:** Flutter com Dart `>=3.3.0` (Flutter 3.19 ou superior).
+**Pré-requisitos:** Flutter `>=3.35` (Dart `>=3.9`).
 
 ```bash
 git clone https://github.com/camposdevs/S3_Bank_flutter.git
@@ -88,6 +89,7 @@ Gerenciador de estado: [`provider`](https://pub.dev/packages/provider) (`ChangeN
 
 ```text
 lib/
+├── animations/                   # FadeSlideIn, AnimatedCounter, AnimatedProgressBar, TapScale, transições de página
 ├── core/
 │   ├── theme/                    # AppColors e ThemeData (Material 3, dark)
 │   └── pix_payload_generator.dart # BR Code do Pix (EMV + CRC16)
@@ -103,12 +105,31 @@ lib/
 │   ├── savings/                  # guardar dinheiro
 │   ├── card/                     # cartão digital
 │   ├── profile/                  # perfil
+│   ├── statement/                # extrato completo
 │   ├── auth_gate.dart            # alterna login ↔ app conforme a sessão
 │   ├── splash_screen.dart
 │   └── main_navigation_screen.dart # navegação inferior entre as abas
 └── main.dart                     # MultiProvider + MaterialApp
 test/                             # testes automatizados
 ```
+
+---
+
+## Animações
+
+Ficam em `lib/animations/` (Flutter puro, sem pacotes extras), seguindo o
+[guia oficial de animações](https://docs.flutter.dev/ui/animations):
+
+| Animação | Onde aparece |
+|----------|--------------|
+| `FadeSlideIn` (entrada em cascata) | Início, Guardar Dinheiro, extrato, login e cadastro |
+| `AnimatedCounter` | Saldo, total guardado e rendimento (o valor "rola" até o número) |
+| `AnimatedProgressBar` | Progresso de nível e das caixinhas |
+| `TapScale` | Botões, atalhos, chips e itens do perfil afundam levemente ao toque |
+| `Hero` | Avatar do início → perfil |
+| `fadeSlideRoute` / `fadeRoute` | Navegação entre telas e da abertura para o app |
+| `AnimatedSwitcher` / `AnimatedContainer` / `AnimatedSize` | Troca login ↔ app, ocultar saldo e dados do cartão, avisos de erro, seleção de ícone |
+| Fade entre abas | Navegação inferior (o estado de cada aba é preservado) |
 
 ---
 
@@ -128,6 +149,7 @@ Os testes cobrem as regras que não podem quebrar sem ninguém perceber:
 | `savings_and_pix_keys_test.dart` | Rendimento por nível, caixinhas, validação de CPF/e-mail/celular/chave aleatória |
 | `auth_provider_test.dart` | Login, cadastro, contas duplicadas, senha com hash, sessão salva e recuperação de senha |
 | `account_data_test.dart` | Dados salvos por conta, isolamento entre contas e persistência ao reabrir o app |
+| `animations_test.dart` | Formatação em R$, animações terminando no estado certo, `TapScale` sem bloquear botões e arredondamento de centavos nas caixinhas |
 
 A cada push, o GitHub Actions roda `flutter analyze` e `flutter test`
 (`.github/workflows/flutter.yml`).

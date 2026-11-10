@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../animations/animations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/auth_widgets.dart';
@@ -66,17 +67,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _goToSignup() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const SignupScreen()),
-    );
+    Navigator.of(context).push(fadeSlideRoute(const SignupScreen()));
   }
 
   void _goToForgotPassword() {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ForgotPasswordScreen(
-          initialIdentifier: _loginController.text,
-        ),
+      fadeSlideRoute(
+        ForgotPasswordScreen(initialIdentifier: _loginController.text),
       ),
     );
   }
@@ -109,7 +106,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   ConstrainedBox(
                     constraints:
                         BoxConstraints(maxHeight: constraints.maxHeight * 0.85),
-                    child: _AccessSheet(
+                    child: FadeSlideIn(
+                      offset: const Offset(0, 0.12),
+                      child: _AccessSheet(
                       formKey: _formKey,
                       loginController: _loginController,
                       passwordController: _passwordController,
@@ -121,6 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       onForgotPassword: _goToForgotPassword,
                       onGoToSignup: _goToSignup,
                       onUseDemo: _useDemoAccount,
+                    ),
                     ),
                   ),
                 ],
@@ -309,10 +309,17 @@ class _AccessSheet extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  if (errorMessage != null) ...[
-                    AuthErrorBanner(message: errorMessage!),
-                    const SizedBox(height: 10),
-                  ],
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOut,
+                    alignment: Alignment.topCenter,
+                    child: errorMessage == null
+                        ? const SizedBox(width: double.infinity)
+                        : Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: AuthErrorBanner(message: errorMessage!),
+                          ),
+                  ),
                   GradientButton(
                     label: loading ? 'ENTRANDO...' : 'ENTRAR',
                     onTap: loading ? null : onSubmit,

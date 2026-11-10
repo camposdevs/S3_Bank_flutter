@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../animations/animations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/auth_widgets.dart';
@@ -118,7 +119,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   child: Center(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(vertical: 24),
-                      child: AuthGlassCard(child: _buildForm()),
+                      child: FadeSlideIn(child: AuthGlassCard(child: _buildForm())),
                     ),
                   ),
                 ),
@@ -192,10 +193,17 @@ class _SignupScreenState extends State<SignupScreen> {
                 : null,
           ),
           const SizedBox(height: 18),
-          if (_errorMessage != null) ...[
-            AuthErrorBanner(message: _errorMessage!),
-            const SizedBox(height: 10),
-          ],
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
+            alignment: Alignment.topCenter,
+            child: _errorMessage == null
+                ? const SizedBox(width: double.infinity)
+                : Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: AuthErrorBanner(message: _errorMessage!),
+                  ),
+          ),
           GradientButton(
             label: _loading ? 'CRIANDO CONTA...' : 'CRIAR CONTA',
             onTap: _loading ? null : _submit,

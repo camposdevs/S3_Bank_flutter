@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import '../providers/auth_provider.dart';
 import '../providers/card_provider.dart';
 import '../providers/pix_keys_provider.dart';
@@ -19,7 +19,7 @@ import 'local_store.dart';
 ///  - ao sair, salva a conta que estava aberta.
 ///
 /// Cada conta tem o seu próprio bloco de dados (`data.<id da conta>`).
-class AccountDataCoordinator {
+class AccountDataCoordinator with WidgetsBindingObserver {
   final LocalStore store;
   final AuthProvider auth;
   final UserProvider user;
@@ -42,6 +42,9 @@ class AccountDataCoordinator {
     required this.card,
   }) {
     auth.addListener(_onAuthChanged);
+    // O cartão acompanha o perfil (nome e nível). Antes isso era feito dentro
+    // do build do Dashboard, o que notificava ouvintes durante o build.
+    user.addListener(_syncCard);
     final List<ChangeNotifier> watched = [user, wallet, savings, pixKeys];
     for (final provider in watched) {
       provider.addListener(_scheduleSave);
@@ -50,6 +53,35 @@ class AccountDataCoordinator {
   }
 
   String _dataKey(String id) => 'data.$id';
+
+  void _syncCard() {
+    card.updateHolderName(user.name);
+    card.syncTier(user.tier);
+  }
+
+  /// Registra o salvamento imediato quando o app vai para segundo plano
+  /// (sem isso, a última alteração feita nos 300 ms antes de fechar o app
+  /// podia se perder). Chame uma vez, depois de `ensureInitialized`.
+  void attachLifecycle() {
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  /// Salva agora, sem esperar o atraso do salvamento automático.
+  void flush() {
+    final id = _loadedId;
+    if (id == null) return;
+    _debounce?.cancel();
+    _saveNow(id);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      flush();
+    }
+  }
 
   void _onAuthChanged() {
     final account = auth.currentAccount;

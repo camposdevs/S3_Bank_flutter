@@ -76,38 +76,52 @@ class DigitalCardWidget extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
-          _ChipAndContactless(),
+          const _ChipAndContactless(),
           const Spacer(),
-          Text(
-            showDetails ? card.groupedNumber : card.maskedNumber,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              letterSpacing: 2,
-              fontWeight: FontWeight.w500,
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: FittedBox(
+              key: ValueKey(showDetails),
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                showDetails ? card.groupedNumber : card.maskedNumber,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  letterSpacing: 2,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 14),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    card.holderName.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+              // Flexible + ellipsis: nome comprido não estoura mais a linha.
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      card.holderName.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  const Text(
-                    'Apenas débito',
-                    style: TextStyle(color: Colors.white70, fontSize: 10),
-                  ),
-                ],
+                    const Text(
+                      'Apenas débito',
+                      style: TextStyle(color: Colors.white70, fontSize: 10),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 12),
               Text(
                 showDetails ? '${card.expiry}  •  CVV ${card.cvv}' : card.expiry,
                 style: const TextStyle(color: Colors.white, fontSize: 13),
@@ -121,6 +135,8 @@ class DigitalCardWidget extends StatelessWidget {
 }
 
 class _ChipAndContactless extends StatelessWidget {
+  const _ChipAndContactless();
+
   @override
   Widget build(BuildContext context) {
     return Row(

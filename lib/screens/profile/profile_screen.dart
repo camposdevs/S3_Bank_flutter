@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../animations/animations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
@@ -39,15 +40,21 @@ class ProfileScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 34,
-                    backgroundColor: Colors.white.withValues(alpha: 0.18),
-                    child: Text(
-                      user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 26,
+                  Hero(
+                    tag: 'profile-avatar',
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: CircleAvatar(
+                        radius: 34,
+                        backgroundColor: Colors.white.withValues(alpha: 0.18),
+                        child: Text(
+                          user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 26,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -105,7 +112,7 @@ class ProfileScreen extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () => context.read<AuthProvider>().signOut(),
+                onPressed: () => _signOut(context),
                 icon: const Icon(Icons.logout, color: AppColors.danger, size: 18),
                 label: const Text('Sair da conta',
                     style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600)),
@@ -120,6 +127,14 @@ class ProfileScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Esta tela é aberta por cima do app (push). Sem fechar ela antes, depois
+  /// do logout o usuário continuava vendo o perfil em vez do login.
+  void _signOut(BuildContext context) {
+    final auth = context.read<AuthProvider>();
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    auth.signOut();
   }
 
   void _showComingSoon(BuildContext context) {
@@ -181,7 +196,8 @@ class _ProfileTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return TapScale(
+      child: Container(
       margin: const EdgeInsets.only(bottom: 10),
       child: Material(
         color: AppColors.surface,
@@ -215,6 +231,7 @@ class _ProfileTile extends StatelessWidget {
             ),
           ),
         ),
+      ),
       ),
     );
   }

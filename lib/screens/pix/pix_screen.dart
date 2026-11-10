@@ -3,15 +3,17 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../../animations/animations.dart';
 import '../../core/pix_payload_generator.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/currency_input_formatter.dart';
 import '../../providers/pix_keys_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/wallet_provider.dart';
+import '../../widgets/gradient_button.dart';
+import '../../widgets/success_dialog.dart';
 import '../../widgets/transaction_tile.dart';
 import '../../models/transaction.dart';
-
 
 // Dados usados na geração da cobrança. O nome do recebedor vem do usuário
 // logado (UserProvider.name) e a chave Pix de "Minhas Chaves"
@@ -155,23 +157,32 @@ class PixScreen extends StatelessWidget {
                     },
                   ),
                   const SizedBox(height: 20),
-                  _GradientButton(
+                  GradientButton(
                     label: 'Confirmar pagamento',
                     onTap: () {
                       if (!formKey.currentState!.validate()) return;
                       final amount = _parseAmount(amountController.text)!;
-                      final ok = wallet.sendPix(
-                        amount,
-                        recipient: recipientController.text.trim(),
-                      );
+                      final recipient = recipientController.text.trim();
+                      final ok = wallet.sendPix(amount, recipient: recipient);
                       Navigator.of(ctx).pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(ok
-                              ? 'Pix enviado com sucesso!'
-                              : 'Não foi possível enviar o Pix.'),
-                        ),
-                      );
+                      if (ok) {
+                        HapticFeedback.mediumImpact();
+                        // O "Copia e Cola" pode ser enorme: encurta no aviso.
+                        final shown = recipient.length > 40
+                            ? '${recipient.substring(0, 37)}...'
+                            : recipient;
+                        showSuccessDialog(
+                          context,
+                          title: 'Pix enviado!',
+                          subtitle: '${_currencyFmt.format(amount)} para $shown',
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Não foi possível enviar o Pix.'),
+                          ),
+                        );
+                      }
                     },
                   ),
                 ],
@@ -302,7 +313,7 @@ class PixScreen extends StatelessWidget {
             },
           ),
           const SizedBox(height: 20),
-          _GradientButton(label: 'Gerar QR Code', onTap: onGenerate),
+          GradientButton(label: 'Gerar QR Code', onTap: onGenerate),
         ],
       ),
     );
@@ -539,7 +550,7 @@ class PixScreen extends StatelessWidget {
                               keysProvider.validateInput(selectedType, v ?? ''),
                         ),
                       const SizedBox(height: 20),
-                      _GradientButton(
+                      GradientButton(
                         label: 'Salvar chave',
                         onTap: () {
                           if (!formKey.currentState!.validate()) return;
@@ -583,7 +594,8 @@ class _PixActionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     // Material + InkWell: o efeito de toque (ripple) fica visível.
     // Com Container decorado dentro do InkWell, a cor cobria o ripple.
-    return Material(
+    return TapScale(
+      child: Material(
       color: AppColors.surface,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
@@ -624,53 +636,6 @@ class _PixActionCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Botão de ação principal com o gradiente da marca — mesmo padrão do
-/// botão "ENTRAR" da tela de login, reaproveitado em todas as
-/// confirmações importantes do fluxo de Pix.
-class _GradientButton extends StatelessWidget {
-  final String label;
-  final VoidCallback? onTap;
-
-  const _GradientButton({required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          gradient: AppColors.loginGradient,
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.loginBlueMid.withValues(alpha: 0.4),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: onTap,
-            child: Center(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

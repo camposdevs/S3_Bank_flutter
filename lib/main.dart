@@ -42,6 +42,8 @@ Future<void> main() async {
     card: card,
   );
 
+  coordinator.attachLifecycle();
+
   runApp(S3BankApp(
     coordinator: coordinator,
     auth: auth,
