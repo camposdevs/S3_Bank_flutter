@@ -177,7 +177,21 @@ class AuthProvider extends ChangeNotifier {
   }
 
   void signOut() {
-    _auth.signOut(); // o onAuthStateChange zera a conta e avisa os ouvintes
+    // Zera a conta já, para o coordenador salvar os dados desta conta.
+    _account = null;
+    notifyListeners();
+    try {
+      _auth.signOut().catchError((_) {});
+    } catch (_) {
+      // Supabase não inicializado (testes): nada a encerrar no servidor.
+    }
+  }
+
+  /// Só para testes: entra com uma conta fabricada, sem falar com o Supabase.
+  @visibleForTesting
+  void debugLogin(Account account) {
+    _account = account;
+    notifyListeners();
   }
 
   // ------------------------------------------------- recuperar a senha

@@ -11,9 +11,9 @@ import 'package:s3_bank/services/account_data_coordinator.dart';
 import 'package:s3_bank/services/local_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Monta o app "sem telas": todos os providers + o coordenador, sobre o
-/// mesmo armazenamento. Criar um [Env] de novo simula fechar e reabrir
-/// o app.
+/// Monta o app "sem telas": providers + coordenador sobre o mesmo
+/// armazenamento. Criar um [Env] de novo simula fechar e reabrir o app.
+/// O login é feito com [AuthProvider.debugLogin], sem falar com o Supabase.
 class Env {
   final AuthProvider auth;
   final UserProvider user;
@@ -47,6 +47,19 @@ class Env {
   }
 }
 
+const demoAccount = Account(
+  id: AuthProvider.demoIdentifier,
+  name: AuthProvider.demoName,
+  identifier: AuthProvider.demoIdentifier,
+  isDemo: true,
+);
+
+const mariaAccount = Account(
+  id: 'maria@email.com',
+  name: 'Maria Teste',
+  identifier: 'maria@email.com',
+);
+
 /// Espera o salvamento automático (que tem um pequeno atraso).
 Future<void> waitForSave() => Future.delayed(const Duration(milliseconds: 600));
 
@@ -57,10 +70,7 @@ void main() {
 
   test('conta de demonstração começa com os dados de exemplo', () async {
     final env = await Env.open();
-    await env.auth.signIn(
-      identifier: AuthProvider.demoIdentifier,
-      password: AuthProvider.demoPassword,
-    );
+    env.auth.debugLogin(demoAccount);
 
     expect(env.user.name, 'Rafaela Souza');
     expect(env.wallet.balance, 3482.17);
@@ -70,11 +80,7 @@ void main() {
 
   test('conta nova começa do zero e o cartão leva o nome dela', () async {
     final env = await Env.open();
-    await env.auth.signUp(
-      name: 'Maria Teste',
-      identifier: 'maria@email.com',
-      password: 'abcd',
-    );
+    env.auth.debugLogin(mariaAccount);
 
     expect(env.user.name, 'Maria Teste');
     expect(env.user.tier, UserTier.bronze);
@@ -88,10 +94,7 @@ void main() {
 
   test('os dados sobrevivem a fechar e reabrir o app', () async {
     final first = await Env.open();
-    await first.auth.signIn(
-      identifier: AuthProvider.demoIdentifier,
-      password: AuthProvider.demoPassword,
-    );
+    first.auth.debugLogin(demoAccount);
     first.wallet.sendPix(100, recipient: 'Padaria');
     first.savings.createGoal(
       name: 'Notebook',
@@ -102,7 +105,7 @@ void main() {
     await waitForSave();
 
     final reopened = await Env.open();
-    expect(reopened.auth.isLoggedIn, isTrue); // sessão restaurada
+    reopened.auth.debugLogin(demoAccount); // "reabrir" = logar de novo na mesma conta
     expect(reopened.wallet.balance, 3382.17);
     expect(reopened.wallet.transactions.first.subtitle, 'Padaria');
     expect(reopened.savings.goals.any((g) => g.name == 'Notebook'), isTrue);
@@ -112,38 +115,27 @@ void main() {
   test('cada conta tem os seus próprios dados', () async {
     final env = await Env.open();
 
-    await env.auth.signUp(
-      name: 'Maria',
-      identifier: 'maria@email.com',
-      password: 'abcd',
-    );
+    env.auth.debugLogin(mariaAccount);
     env.wallet.receivePix(250, sender: 'Amigo');
     await waitForSave();
     env.auth.signOut();
 
-    await env.auth.signIn(
-      identifier: AuthProvider.demoIdentifier,
-      password: AuthProvider.demoPassword,
-    );
+    env.auth.debugLogin(demoAccount);
     expect(env.wallet.balance, 3482.17); // nada da Maria vazou para a demo
 
     env.auth.signOut();
-    await env.auth.signIn(identifier: 'maria@email.com', password: 'abcd');
+    env.auth.debugLogin(mariaAccount);
     expect(env.wallet.balance, 250); // e a Maria recuperou o que era dela
-    expect(env.user.name, 'Maria');
+    expect(env.user.name, 'Maria Teste');
   });
 
   test('sair salva as últimas mudanças mesmo antes do atraso do salvamento', () async {
     final env = await Env.open();
-    await env.auth.signUp(
-      name: 'Maria',
-      identifier: 'maria@email.com',
-      password: 'abcd',
-    );
+    env.auth.debugLogin(mariaAccount);
     env.wallet.receivePix(80, sender: 'Amigo');
     env.auth.signOut(); // sem esperar o atraso do salvamento
 
-    await env.auth.signIn(identifier: 'maria@email.com', password: 'abcd');
+    env.auth.debugLogin(mariaAccount);
     expect(env.wallet.balance, 80);
   });
 }
