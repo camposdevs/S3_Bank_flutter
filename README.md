@@ -126,6 +126,7 @@ Ficam em `lib/animations/` (Flutter puro, sem pacotes extras), seguindo o
 | `AnimatedCounter` | Saldo, total guardado e rendimento (o valor "rola" até o número) |
 | `AnimatedProgressBar` | Progresso de nível e das caixinhas |
 | `TapScale` | Botões, atalhos, chips e itens do perfil afundam levemente ao toque |
+| `MorphButton` + `LoadingDots` | Botão ENTRAR encolhe numa pílula com três pontinhos pulsando ao entrar |
 | `Hero` | Avatar do início → perfil |
 | `fadeSlideRoute` / `fadeRoute` | Navegação entre telas e da abertura para o app |
 | `AnimatedSwitcher` / `AnimatedContainer` / `AnimatedSize` | Troca login ↔ app, ocultar saldo e dados do cartão, avisos de erro, seleção de ícone |
@@ -179,6 +180,23 @@ Os pontos estão marcados no código com `TODO(integração-backend)`:
 > **Aviso sobre o Pix:** o QR Code gerado é estático e estruturalmente válido.
 > Se a chave informada existir de verdade, qualquer banco consegue pagar nela.
 > Em demonstrações, use sempre uma chave fictícia.
+
+---
+
+## Segurança (protótipo)
+
+Este projeto é um **protótipo sem servidor**, e isso define o que ele garante:
+
+- **Senhas:** nunca são guardadas em texto puro. Cada conta recebe um *salt* aleatório
+  (`Random.secure`) e a senha é guardada como hash SHA-256 desse salt com a senha.
+- **Sessão e contas:** ficam no aparelho (`shared_preferences`), isoladas por conta.
+- **Recuperação de senha:** o código é gerado localmente e exibido na própria tela
+  (modo demonstração), porque não há envio de e-mail ou SMS.
+
+**Para produção**, isto precisaria mudar: autenticação no servidor, um algoritmo lento
+de senha (PBKDF2, scrypt ou Argon2 em vez de um SHA-256 simples), código enviado por
+canal real e comunicação protegida por HTTPS. Os pontos estão listados em
+*Onde plugar um backend*.
 
 ---
 

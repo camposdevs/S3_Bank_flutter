@@ -5,7 +5,7 @@ import '../../animations/animations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/auth_widgets.dart';
-import '../../widgets/gradient_button.dart';
+import '../../widgets/morph_button.dart';
 import 'forgot_password_screen.dart';
 import 'signup_screen.dart';
 
@@ -320,9 +320,10 @@ class _AccessSheet extends StatelessWidget {
                             child: AuthErrorBanner(message: errorMessage!),
                           ),
                   ),
-                  GradientButton(
-                    label: loading ? 'ENTRANDO...' : 'ENTRAR',
-                    onTap: loading ? null : onSubmit,
+                  MorphButton(
+                    label: 'ENTRAR',
+                    loading: loading,
+                    onTap: onSubmit,
                   ),
                   const SizedBox(height: 18),
                   Center(

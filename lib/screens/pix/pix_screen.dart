@@ -191,7 +191,10 @@ class PixScreen extends StatelessWidget {
           ),
         );
       },
-    );
+    ).whenComplete(() {
+      recipientController.dispose();
+      amountController.dispose();
+    });
   }
 
   void _showReceiveModal(BuildContext context) {
@@ -274,7 +277,10 @@ class PixScreen extends StatelessWidget {
           },
         );
       },
-    );
+    ).whenComplete(() {
+      senderController.dispose();
+      amountController.dispose();
+    });
   }
 
   Widget _buildChargeForm({
@@ -573,7 +579,9 @@ class PixScreen extends StatelessWidget {
           },
         );
       },
-    );
+    ).whenComplete(() {
+      valueController.dispose();
+    });
   }
 }
 
