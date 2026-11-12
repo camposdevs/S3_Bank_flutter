@@ -76,9 +76,8 @@ Para rodar no navegador:
 flutter run -d chrome
 ```
 
-> **Para entrar no app:** toque em **"Entrar com a conta de demonstração"** (conta já preenchida com saldo,
-> caixinhas e chaves Pix de exemplo) ou crie a sua em **"Abra sua conta"** (começa zerada).
-> Contas, sessão e dados ficam salvos no aparelho; ao reabrir o app você continua logado.
+> **Para entrar no app:** crie sua conta em **"Abra sua conta"**. Ela começa zerada.
+> A sessão fica salva no aparelho, então ao reabrir o app você continua logado. Os dados ficam no banco (Supabase).
 
 ---
 

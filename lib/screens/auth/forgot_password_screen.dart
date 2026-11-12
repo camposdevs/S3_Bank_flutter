@@ -310,8 +310,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             subtitle: 'Enviamos um código de 6 dígitos para $_maskedIdentifier.',
           ),
           const SizedBox(height: 16),
-          _DemoCodeBox(code: context.read<AuthProvider>().demoResetCode),
-          const SizedBox(height: 16),
           AuthTextField(
             controller: _codeController,
             label: 'Código de 6 dígitos',
@@ -516,46 +514,3 @@ class _StepHeader extends StatelessWidget {
   }
 }
 
-/// Mostra o código da recuperação na tela (modo demonstração), já que o
-/// app não tem como enviar e-mail ou SMS de verdade.
-class _DemoCodeBox extends StatelessWidget {
-  final String? code;
-
-  const _DemoCodeBox({required this.code});
-
-  @override
-  Widget build(BuildContext context) {
-    if (code == null) return const SizedBox.shrink();
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.accentLight.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.accentLight.withValues(alpha: 0.25)),
-      ),
-      child: Text.rich(
-        TextSpan(
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 12.5,
-            height: 1.4,
-          ),
-          children: [
-            const TextSpan(text: 'Modo demonstração: seu código é '),
-            TextSpan(
-              text: code,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.5,
-              ),
-            ),
-            const TextSpan(
-              text: '. Em um app real, ele chegaria por e-mail ou SMS.',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:s3_bank/providers/auth_provider.dart';
 import 'package:s3_bank/screens/auth/login_screen.dart';
-import 'package:s3_bank/services/local_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Garante que a tela de login não estoura ("BOTTOM OVERFLOWED") em

@@ -12,8 +12,7 @@ import 'local_store.dart';
 
 /// Liga a conta logada aos dados do app:
 ///  - ao entrar numa conta, carrega os dados salvos dela nos providers
-///    (conta demo sem dados salvos recebe os dados de exemplo; conta
-///    nova começa do zero);
+///    (conta sem dados salvos começa do zero);
 ///  - a cada mudança nos providers, salva tudo no disco (com um pequeno
 ///    atraso para agrupar várias mudanças seguidas);
 ///  - ao sair, salva a conta que estava aberta.
@@ -120,17 +119,10 @@ class AccountDataCoordinator with WidgetsBindingObserver {
       }
 
       if (!restored) {
-        if (account.isDemo) {
-          user.loadDemoData();
-          wallet.loadDemoData();
-          savings.loadDemoData();
-          pixKeys.loadDemoData();
-        } else {
-          user.startNewProfile(account.name);
-          wallet.resetForNewAccount();
-          savings.resetForNewAccount();
-          pixKeys.resetForNewAccount();
-        }
+        user.startNewProfile(account.name);
+        wallet.resetForNewAccount();
+        savings.resetForNewAccount();
+        pixKeys.resetForNewAccount();
       }
 
       // O cartão é derivado do perfil (nome e nível).

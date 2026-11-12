@@ -47,11 +47,10 @@ class Env {
   }
 }
 
-const demoAccount = Account(
-  id: AuthProvider.demoIdentifier,
-  name: AuthProvider.demoName,
-  identifier: AuthProvider.demoIdentifier,
-  isDemo: true,
+const anaAccount = Account(
+  id: 'ana@email.com',
+  name: 'Ana Teste',
+  identifier: 'ana@email.com',
 );
 
 const mariaAccount = Account(
@@ -66,16 +65,6 @@ Future<void> waitForSave() => Future.delayed(const Duration(milliseconds: 600));
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
-  });
-
-  test('conta de demonstração começa com os dados de exemplo', () async {
-    final env = await Env.open();
-    env.auth.debugLogin(demoAccount);
-
-    expect(env.user.name, 'Rafaela Souza');
-    expect(env.wallet.balance, 3482.17);
-    expect(env.savings.goals, isNotEmpty);
-    expect(env.pixKeys.keys, isNotEmpty);
   });
 
   test('conta nova começa do zero e o cartão leva o nome dela', () async {
@@ -94,7 +83,7 @@ void main() {
 
   test('os dados sobrevivem a fechar e reabrir o app', () async {
     final first = await Env.open();
-    first.auth.debugLogin(demoAccount);
+    first.auth.debugLogin(anaAccount);
     first.wallet.sendPix(100, recipient: 'Padaria');
     first.savings.createGoal(
       name: 'Notebook',
@@ -105,7 +94,7 @@ void main() {
     await waitForSave();
 
     final reopened = await Env.open();
-    reopened.auth.debugLogin(demoAccount); // "reabrir" = logar de novo na mesma conta
+    reopened.auth.debugLogin(anaAccount); // "reabrir" = logar de novo na mesma conta
     expect(reopened.wallet.balance, 3382.17);
     expect(reopened.wallet.transactions.first.subtitle, 'Padaria');
     expect(reopened.savings.goals.any((g) => g.name == 'Notebook'), isTrue);
@@ -120,8 +109,8 @@ void main() {
     await waitForSave();
     env.auth.signOut();
 
-    env.auth.debugLogin(demoAccount);
-    expect(env.wallet.balance, 3482.17); // nada da Maria vazou para a demo
+    env.auth.debugLogin(anaAccount);
+    expect(env.wallet.balance, 0); // nada da Maria vazou para a Ana
 
     env.auth.signOut();
     env.auth.debugLogin(mariaAccount);

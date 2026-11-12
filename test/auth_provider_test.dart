@@ -22,10 +22,4 @@ void main() {
     });
   });
 
-  group('constantes da conta demo', () {
-    test('senha demo respeita o mínimo do Supabase (6 caracteres)', () {
-      expect(AuthProvider.demoPassword.length, greaterThanOrEqualTo(6));
-      expect(AuthProvider.isValidEmail(AuthProvider.demoIdentifier), isTrue);
-    });
-  });
 }

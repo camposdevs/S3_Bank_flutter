@@ -9,13 +9,11 @@ class Account {
   final String id;
   final String name;
   final String identifier;
-  final bool isDemo;
 
   const Account({
     required this.id,
     required this.name,
     required this.identifier,
-    this.isDemo = false,
   });
 }
 
@@ -29,12 +27,6 @@ class Account {
 /// Login é feito por e-mail: o Supabase Auth exige e-mail, e aceitar CPF
 /// exigiria um endpoint público que converte CPF em e-mail (vazamento).
 class AuthProvider extends ChangeNotifier {
-  static const demoIdentifier = 'demo@s3bank.com';
-  // Mínimo do Supabase é 6. A conta demo precisa existir no projeto
-  // (crie-a uma vez pelo cadastro com este e-mail e esta senha).
-  static const demoPassword = '123456';
-  static const demoName = 'Rafaela Souza';
-
   static const _networkError = 'Sem conexão com o servidor. Tente de novo';
   static const _genericError = 'Não foi possível concluir. Tente de novo';
 
@@ -58,10 +50,6 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoggedIn => _account != null;
   Account? get currentAccount => _account;
   String? get loginIdentifier => _account?.identifier;
-
-  /// Mantido por compatibilidade com a tela de recuperação. Com e-mail
-  /// real não existe mais código exibido na tela.
-  String? get demoResetCode => null;
 
   // ------------------------------------------------------------ helpers
 
@@ -110,7 +98,6 @@ class AuthProvider extends ChangeNotifier {
       id: user.id,
       name: name,
       identifier: user.email ?? '',
-      isDemo: user.email == demoIdentifier,
     );
     notifyListeners();
   }
