@@ -32,8 +32,8 @@ Future<void> main() async {
   final auth = AuthProvider();
   final user = UserProvider();
   final wallet = WalletProvider()..attachLedger(LedgerRepository());
-  final savings = SavingsProvider();
-  final pixKeys = PixKeysProvider();
+  final savings = SavingsProvider()..attachLedger(LedgerRepository());
+  final pixKeys = PixKeysProvider()..attachLedger(LedgerRepository());
   final card = CardProvider(
     holderName: 'Rafaela Souza',
     initialTier: UserTier.bronze,

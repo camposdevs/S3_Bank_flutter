@@ -149,12 +149,12 @@ class _SignupScreenState extends State<SignupScreen> {
           const SizedBox(height: 12),
           AuthTextField(
             controller: _identifierController,
-            label: 'CPF ou e-mail',
+            label: 'E-mail',
             icon: Icons.person_outline,
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
             validator: (v) => (v == null || v.trim().isEmpty)
-                ? 'Informe seu CPF ou e-mail'
+                ? 'Informe seu e-mail'
                 : null,
           ),
           const SizedBox(height: 12),

@@ -267,12 +267,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             icon: Icons.lock_reset,
             title: 'Esqueceu sua senha?',
             subtitle:
-                'Informe seu CPF ou e-mail cadastrado. Vamos enviar um código de verificação.',
+                'Informe seu e-mail cadastrado. Vamos enviar um código de verificação.',
           ),
           const SizedBox(height: 20),
           AuthTextField(
             controller: _identifierController,
-            label: 'CPF ou e-mail',
+            label: 'E-mail',
             icon: Icons.person_outline,
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.done,
@@ -280,7 +280,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               if (!_loading) _sendCode();
             },
             validator: (v) => (v == null || v.trim().isEmpty)
-                ? 'Informe seu CPF ou e-mail'
+                ? 'Informe seu e-mail'
                 : null,
           ),
           const SizedBox(height: 18),

@@ -562,9 +562,17 @@ class PixScreen extends StatelessWidget {
                       const SizedBox(height: 20),
                       GradientButton(
                         label: 'Salvar chave',
-                        onTap: () {
+                        onTap: () async {
                           if (!formKey.currentState!.validate()) return;
-                          if (selectedType == PixKeyType.random) {
+                          String? error;
+                          if (keysProvider.isServerBacked) {
+                            error = selectedType == PixKeyType.random
+                                ? await keysProvider.addRandomKeyRemote()
+                                : await keysProvider.addKeyRemote(
+                                    type: selectedType,
+                                    value: valueController.text.trim(),
+                                  );
+                          } else if (selectedType == PixKeyType.random) {
                             keysProvider.addRandomKey();
                           } else {
                             keysProvider.addKey(
@@ -572,7 +580,13 @@ class PixScreen extends StatelessWidget {
                               value: valueController.text.trim(),
                             );
                           }
+                          if (!ctx.mounted) return;
                           Navigator.of(ctx).pop();
+                          if (error != null && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(error)),
+                            );
+                          }
                         },
                       ),
                     ],

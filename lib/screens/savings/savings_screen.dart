@@ -140,10 +140,15 @@ class SavingsScreen extends StatelessWidget {
     _showSheet(
       context,
       _CreateGoalSheet(
-        onCreate: (name, icon, target) {
-          savings.createGoal(name: name, icon: icon, targetAmount: target);
+        onCreate: (name, icon, target) async {
+          String? error;
+          if (savings.isServerBacked) {
+            error = await savings.createGoalRemote(name: name, targetAmount: target);
+          } else {
+            savings.createGoal(name: name, icon: icon, targetAmount: target);
+          }
           messenger.showSnackBar(
-            SnackBar(content: Text('Caixinha "$name" criada.')),
+            SnackBar(content: Text(error ?? 'Caixinha "$name" criada.')),
           );
         },
       ),
@@ -302,23 +307,33 @@ class _GoalCard extends StatelessWidget {
     );
   }
 
-  void _deposit(BuildContext context, SavingsGoal goal, double amount) {
+  Future<void> _deposit(BuildContext context, SavingsGoal goal, double amount) async {
     final wallet = context.read<WalletProvider>();
     final savings = context.read<SavingsProvider>();
     final user = context.read<UserProvider>();
     final messenger = ScaffoldMessenger.of(context);
+    final tierBefore = user.tier;
 
-    final debited = wallet.debitForSavings(amount, goalName: goal.name);
-    if (!debited) {
+    if (savings.isServerBacked) {
+      final error = await savings.depositRemote(goal.id, amount);
       messenger.hideCurrentSnackBar();
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Saldo insuficiente na conta corrente.')),
-      );
-      return;
+      if (error != null) {
+        messenger.showSnackBar(SnackBar(content: Text(error)));
+        return;
+      }
+      await wallet.refreshFromServer();
+    } else {
+      final debited = wallet.debitForSavings(amount, goalName: goal.name);
+      if (!debited) {
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Saldo insuficiente na conta corrente.')),
+        );
+        return;
+      }
+      savings.deposit(goal.id, amount);
     }
 
-    final tierBefore = user.tier;
-    savings.deposit(goal.id, amount);
     // Cada aporte alimenta a pontuação de constância que impulsiona o
     // usuário rumo ao próximo nível de rendimento.
     user.registerDeposit(amount);
@@ -331,6 +346,7 @@ class _GoalCard extends StatelessWidget {
       ),
     );
 
+    if (!context.mounted) return;
     if (user.tier != tierBefore) {
       showSuccessDialog(
         context,
@@ -366,7 +382,23 @@ class _GoalCard extends StatelessWidget {
         confirmLabel: 'Confirmar resgate',
         validate: (value) =>
             value > goal.currentAmount ? 'Valor maior que o guardado' : null,
-        onConfirm: (amount) {
+        onConfirm: (amount) async {
+          if (savings.isServerBacked) {
+            final error = await savings.withdrawRemote(goal.id, amount);
+            messenger.hideCurrentSnackBar();
+            if (error != null) {
+              messenger.showSnackBar(SnackBar(content: Text(error)));
+              return;
+            }
+            await wallet.refreshFromServer();
+            HapticFeedback.lightImpact();
+            messenger.showSnackBar(
+              SnackBar(
+                content: Text('${_currencyFmt.format(amount)} resgatado para a conta.'),
+              ),
+            );
+            return;
+          }
           final actual = savings.withdraw(goal.id, amount);
           if (actual <= 0) return;
           wallet.creditFromSavings(actual, goalName: goal.name);

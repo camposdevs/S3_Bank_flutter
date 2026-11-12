@@ -11,17 +11,20 @@ class LedgerException implements Exception {
   String toString() => message;
 }
 
-/// Acesso ao livro-razão no Supabase.
+/// Acesso ao banco (Supabase).
 ///
-/// Regras: o saldo é lido da view `account_balances` (soma do livro-razão)
-/// e nunca editado. Toda escrita passa pelas funções do banco
-/// (`pix_transfer`, `simulate_deposit`), que validam saldo e chave.
+/// Regras: saldos são lidos de views (somas do livro-razão) e nunca
+/// editados. Toda escrita financeira passa por funções do banco, que
+/// validam saldo e regras. As chaves Pix são gravadas na tabela `pix_keys`
+/// (com RLS), que é a única escrita direta permitida.
 class LedgerRepository {
   final SupabaseClient? _injected;
 
   LedgerRepository([this._injected]);
 
   SupabaseClient get _client => _injected ?? Supabase.instance.client;
+
+  // ------------------------------------------------------------ saldo e extrato
 
   Future<int> fetchBalanceCents() => _run(() async {
         final row = await _client
@@ -61,6 +64,66 @@ class LedgerRepository {
         });
       });
 
+  // ------------------------------------------------------------ caixinhas
+
+  /// Linhas da view savings_goal_balances: goal_id, name, target_cents,
+  /// saved_cents, created_at.
+  Future<List<Map<String, dynamic>>> fetchGoals() => _run(() async {
+        final rows = await _client
+            .from('savings_goal_balances')
+            .select()
+            .order('created_at', ascending: true);
+        return rows.map((r) => Map<String, dynamic>.from(r)).toList();
+      });
+
+  Future<void> createGoal({required String name, required int targetCents}) =>
+      _run(() async {
+        await _client.rpc('create_savings_goal', params: {
+          'p_name': name,
+          'p_target_cents': targetCents,
+        });
+      });
+
+  /// direction: 'in' guarda (sai da conta), 'out' resgata (volta para a conta).
+  Future<void> moveSavings({
+    required String goalId,
+    required int amountCents,
+    required String direction,
+  }) =>
+      _run(() async {
+        await _client.rpc('savings_move', params: {
+          'p_goal_id': goalId,
+          'p_amount_cents': amountCents,
+          'p_direction': direction,
+        });
+      });
+
+  // ------------------------------------------------------------ chaves Pix
+
+  Future<List<Map<String, dynamic>>> fetchPixKeys() => _run(() async {
+        final rows = await _client
+            .from('pix_keys')
+            .select('id, key_type, key_value')
+            .order('created_at', ascending: true);
+        return rows.map((r) => Map<String, dynamic>.from(r)).toList();
+      });
+
+  Future<void> insertPixKey({required String keyType, required String keyValue}) =>
+      _run(() async {
+        final account = await _client.from('accounts').select('id').single();
+        await _client.from('pix_keys').insert({
+          'account_id': account['id'],
+          'key_type': keyType,
+          'key_value': keyValue,
+        });
+      });
+
+  Future<void> deletePixKey(String id) => _run(() async {
+        await _client.from('pix_keys').delete().eq('id', id);
+      });
+
+  // ------------------------------------------------------------ mapeamento
+
   /// Converte uma linha de `ledger_entries` no modelo que as telas usam.
   /// Amount sempre positivo; o tipo define se é entrada ou saída.
   static Transaction toTransaction(Map<String, dynamic> row) {
@@ -93,6 +156,12 @@ class LedgerRepository {
       case 'fee':
         type = TransactionType.pixSent;
         title = 'Tarifa';
+      case 'savings_in':
+        type = TransactionType.savingsDeposit;
+        title = 'Guardado em caixinha';
+      case 'savings_out':
+        type = TransactionType.savingsWithdraw;
+        title = 'Resgatado da caixinha';
       default:
         type = cents >= 0 ? TransactionType.pixReceived : TransactionType.pixSent;
         title = 'Ajuste';
@@ -107,6 +176,8 @@ class LedgerRepository {
       date: date,
     );
   }
+
+  // ------------------------------------------------------------ erros
 
   /// Executa uma operação do banco e traduz erros para o usuário.
   Future<T> _run<T>(Future<T> Function() op) async {
@@ -125,7 +196,15 @@ class LedgerRepository {
     if (m.contains('chave pix não encontrada')) return 'Chave Pix não encontrada';
     if (m.contains('própria conta')) return 'Não é possível enviar para a própria conta';
     if (m.contains('valor inválido')) return 'Valor inválido';
+    if (m.contains('valor maior que o guardado')) return 'Valor maior que o guardado';
+    if (m.contains('caixinha não encontrada')) return 'Caixinha não encontrada';
+    if (m.contains('nome inválido')) return 'Informe um nome para a caixinha';
     if (m.contains('conta não encontrada')) return 'Conta não encontrada';
+    // Chave duplicada ou de outra pessoa: mensagem genérica, para não
+    // revelar se uma chave existe em outra conta.
+    if (m.contains('duplicate key') || m.contains('row-level security')) {
+      return 'Esta chave não pode ser cadastrada';
+    }
     return 'Não foi possível concluir a operação';
   }
 }

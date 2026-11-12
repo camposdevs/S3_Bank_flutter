@@ -250,12 +250,12 @@ class _AccessSheet extends StatelessWidget {
                   const SizedBox(height: 18),
                   AuthTextField(
                     controller: loginController,
-                    label: 'CPF ou e-mail',
+                    label: 'E-mail',
                     icon: Icons.person_outline,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     validator: (v) => (v == null || v.trim().isEmpty)
-                        ? 'Informe seu CPF ou e-mail'
+                        ? 'Informe seu e-mail'
                         : null,
                   ),
                   const SizedBox(height: 12),

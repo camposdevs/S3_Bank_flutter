@@ -92,12 +92,18 @@ class AccountDataCoordinator with WidgetsBindingObserver {
     _loadedId = null;
 
     if (account == null) {
-      wallet.clearSession(); // não deixa o saldo de quem saiu aparecer
+      // Não deixa os dados de quem saiu aparecerem para o próximo usuário.
+      wallet.clearSession();
+      savings.clearSession();
+      pixKeys.clearSession();
       return;
     }
     _load(account);
     _loadedId = account.id;
-    wallet.refreshFromServer(); // no modo banco, busca saldo e extrato
+    // No modo banco, busca tudo do servidor.
+    wallet.refreshFromServer();
+    savings.refreshFromServer();
+    pixKeys.refreshFromServer();
   }
 
   void _load(Account account) {

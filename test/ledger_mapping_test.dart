@@ -45,5 +45,19 @@ void main() {
       expect(entrada.type, TransactionType.pixReceived);
       expect(saida.type, TransactionType.pixSent);
     });
+
+    test('guardar em caixinha vira depósito em caixinha (saída da conta)', () {
+      final t = LedgerRepository.toTransaction(row(kind: 'savings_in', cents: -4000));
+      expect(t.type, TransactionType.savingsDeposit);
+      expect(t.title, 'Guardado em caixinha');
+      expect(t.amount, 40.0);
+      expect(t.isCredit, isFalse);
+    });
+
+    test('resgatar da caixinha vira entrada na conta', () {
+      final t = LedgerRepository.toTransaction(row(kind: 'savings_out', cents: 4000));
+      expect(t.type, TransactionType.savingsWithdraw);
+      expect(t.isCredit, isTrue);
+    });
   });
 }

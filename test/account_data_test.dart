@@ -84,6 +84,7 @@ void main() {
   test('os dados sobrevivem a fechar e reabrir o app', () async {
     final first = await Env.open();
     first.auth.debugLogin(anaAccount);
+    first.wallet.receivePix(1000, sender: 'Teste'); // conta começa zerada
     first.wallet.sendPix(100, recipient: 'Padaria');
     first.savings.createGoal(
       name: 'Notebook',
@@ -95,7 +96,7 @@ void main() {
 
     final reopened = await Env.open();
     reopened.auth.debugLogin(anaAccount); // "reabrir" = logar de novo na mesma conta
-    expect(reopened.wallet.balance, 3382.17);
+    expect(reopened.wallet.balance, 900);
     expect(reopened.wallet.transactions.first.subtitle, 'Padaria');
     expect(reopened.savings.goals.any((g) => g.name == 'Notebook'), isTrue);
     expect(reopened.user.consistencyPoints, first.user.consistencyPoints);
