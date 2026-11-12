@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'core/config/supabase_config.dart';
 import 'core/theme/app_theme.dart';
 import 'models/user_tier.dart';
 import 'providers/auth_provider.dart';
@@ -19,9 +21,14 @@ Future<void> main() async {
   // App de banco: só em pé (retrato), como a maioria dos apps financeiros.
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
+  await Supabase.initialize(
+    url: SupabaseConfig.url,
+    anonKey: SupabaseConfig.anonKey,
+  );
+
   final store = await LocalStore.create();
 
-  final auth = AuthProvider(store);
+  final auth = AuthProvider();
   final user = UserProvider();
   final wallet = WalletProvider();
   final savings = SavingsProvider();

@@ -1,273 +1,244 @@
-import 'dart:convert';
-import 'dart:math';
+import 'dart:async';
 
-import 'package:crypto/crypto.dart';
-import 'package:flutter/material.dart';
-import '../services/local_store.dart';
+import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Conta cadastrada no aparelho. A senha nunca é guardada em texto puro:
-/// só o hash (SHA-256) combinado com um "sal" aleatório.
+/// Conta do usuário logado. O [id] é o UUID do Supabase Auth, que é a
+/// mesma chave usada no banco (profiles, accounts, ledger_entries).
 class Account {
   final String id;
   final String name;
   final String identifier;
-  final String salt;
-  final String passwordHash;
   final bool isDemo;
 
   const Account({
     required this.id,
     required this.name,
     required this.identifier,
-    required this.salt,
-    required this.passwordHash,
     this.isDemo = false,
   });
-
-  Account withPassword(String salt, String passwordHash) => Account(
-        id: id,
-        name: name,
-        identifier: identifier,
-        salt: salt,
-        passwordHash: passwordHash,
-        isDemo: isDemo,
-      );
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'identifier': identifier,
-        'salt': salt,
-        'passwordHash': passwordHash,
-        'isDemo': isDemo,
-      };
-
-  factory Account.fromJson(Map<String, dynamic> json) => Account(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        identifier: json['identifier'] as String,
-        salt: json['salt'] as String,
-        passwordHash: json['passwordHash'] as String,
-        isDemo: json['isDemo'] as bool? ?? false,
-      );
 }
 
-/// Autenticação local: contas e sessão ficam salvas no aparelho
-/// (via [LocalStore]), então o usuário continua logado ao reabrir o app.
+/// Autenticação via Supabase Auth.
 ///
-/// Não há servidor: o "hash" protege contra leitura casual do
-/// armazenamento, mas NÃO substitui autenticação de verdade.
+/// A sessão é persistida pelo próprio supabase_flutter, então o usuário
+/// continua logado ao reabrir o app. A API pública (signIn, signUp,
+/// signOut, recuperação de senha) não mudou, então as telas continuam
+/// iguais.
 ///
-/// TODO(integração-backend): trocar o corpo de [signIn], [signUp],
-/// [signOut] e do fluxo de recuperação por chamadas à API. As
-/// assinaturas podem continuar iguais, então nenhuma tela muda.
+/// Login é feito por e-mail: o Supabase Auth exige e-mail, e aceitar CPF
+/// exigiria um endpoint público que converte CPF em e-mail (vazamento).
 class AuthProvider extends ChangeNotifier {
-  /// Conta de demonstração, criada automaticamente na primeira execução.
   static const demoIdentifier = 'demo@s3bank.com';
-  static const demoPassword = '1234';
+  // Mínimo do Supabase é 6. A conta demo precisa existir no projeto
+  // (crie-a uma vez pelo cadastro com este e-mail e esta senha).
+  static const demoPassword = '123456';
   static const demoName = 'Rafaela Souza';
 
-  static const _accountsKey = 'accounts';
-  static const _sessionKey = 'session';
+  static const _networkError = 'Sem conexão com o servidor. Tente de novo';
+  static const _genericError = 'Não foi possível concluir. Tente de novo';
 
-  final LocalStore _store;
-  final Map<String, Account> _accounts = {};
-  String? _currentId;
+  StreamSubscription<AuthState>? _sub;
+  Account? _account;
 
-  // Estado temporário da recuperação de senha (nunca vai para o disco).
-  String? _resetAccountId;
-  String? _resetCode;
+  // Estado temporário da recuperação de senha (só em memória).
+  String? _resetEmail;
   bool _resetVerified = false;
 
-  AuthProvider(this._store) {
-    _loadFromDisk();
+  AuthProvider() {
+    _sub = _auth.onAuthStateChange.listen((state) => _onSession(state.session));
+    _onSession(_auth.currentSession);
   }
 
-  bool get isLoggedIn => _currentId != null;
-  Account? get currentAccount => _currentId == null ? null : _accounts[_currentId];
-  String? get loginIdentifier => currentAccount?.identifier;
+  GoTrueClient get _auth => Supabase.instance.client.auth;
 
-  /// Código da recuperação de senha. Como não há e-mail/SMS de verdade,
-  /// a tela de recuperação mostra o código (modo demonstração).
-  String? get demoResetCode => _resetCode;
+  bool get isLoggedIn => _account != null;
+  Account? get currentAccount => _account;
+  String? get loginIdentifier => _account?.identifier;
+
+  /// Mantido por compatibilidade com a tela de recuperação. Com e-mail
+  /// real não existe mais código exibido na tela.
+  String? get demoResetCode => null;
 
   // ------------------------------------------------------------ helpers
 
-  /// E-mail em minúsculas ou CPF só com dígitos, para comparar contas.
-  static String normalizeIdentifier(String raw) {
-    final v = raw.trim().toLowerCase();
-    if (v.contains('@')) return v;
-    final digits = v.replaceAll(RegExp(r'\D'), '');
-    return digits.isNotEmpty ? digits : v;
-  }
-
   static final _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
-  static bool _isValidIdentifier(String normalized) {
-    if (normalized.contains('@')) return _emailRegex.hasMatch(normalized);
-    return RegExp(r'^\d{11}$').hasMatch(normalized);
+  static bool isValidEmail(String raw) => _emailRegex.hasMatch(raw.trim());
+
+  static String normalizeEmail(String raw) => raw.trim().toLowerCase();
+
+  static String _mapError(AuthException e) {
+    final m = e.message.toLowerCase();
+    if (m.contains('invalid login')) return 'E-mail ou senha incorretos';
+    if (m.contains('already registered') || m.contains('already exists')) {
+      return 'Já existe uma conta com esse e-mail';
+    }
+    if (m.contains('not confirmed')) {
+      return 'Confirme seu e-mail antes de entrar';
+    }
+    if (m.contains('rate limit') || m.contains('too many')) {
+      return 'Muitas tentativas. Aguarde um pouco';
+    }
+    if (m.contains('token') || m.contains('otp')) {
+      return 'Código incorreto ou expirado';
+    }
+    return _genericError;
   }
 
-  static String _newSalt() {
-    final random = Random.secure();
-    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
-    return base64UrlEncode(bytes);
-  }
+  // ------------------------------------------------------------ sessão
 
-  static String _hash(String salt, String password) =>
-      sha256.convert(utf8.encode('$salt:$password')).toString();
-
-  void _loadFromDisk() {
-    final raw = _store.getString(_accountsKey);
-    if (raw != null) {
-      try {
-        final list = jsonDecode(raw) as List;
-        for (final item in list) {
-          final account = Account.fromJson(Map<String, dynamic>.from(item as Map));
-          _accounts[account.id] = account;
-        }
-      } catch (_) {
-        _accounts.clear(); // dado corrompido: começa limpo
+  Future<void> _onSession(Session? session) async {
+    final user = session?.user;
+    if (user == null) {
+      if (_account != null) {
+        _account = null;
+        notifyListeners();
       }
+      return;
     }
+    if (_account?.id == user.id) return;
 
-    final demoId = normalizeIdentifier(demoIdentifier);
-    if (!_accounts.containsKey(demoId)) {
-      final salt = _newSalt();
-      _accounts[demoId] = Account(
-        id: demoId,
-        name: demoName,
-        identifier: demoIdentifier,
-        salt: salt,
-        passwordHash: _hash(salt, demoPassword),
-        isDemo: true,
-      );
-      _saveAccounts();
-    }
+    final name = await _loadName(user);
+    // Se a sessão mudou enquanto o nome carregava, descarta o resultado.
+    if (_auth.currentUser?.id != user.id) return;
 
-    final session = _store.getString(_sessionKey);
-    if (session != null && _accounts.containsKey(session)) {
-      _currentId = session;
-    }
-  }
-
-  void _saveAccounts() {
-    _store.setString(
-      _accountsKey,
-      jsonEncode(_accounts.values.map((a) => a.toJson()).toList()),
+    _account = Account(
+      id: user.id,
+      name: name,
+      identifier: user.email ?? '',
+      isDemo: user.email == demoIdentifier,
     );
+    notifyListeners();
   }
 
-  void _startSession(String id) {
-    _currentId = id;
-    _store.setString(_sessionKey, id);
-    notifyListeners();
+  Future<String> _loadName(User user) async {
+    final fallback = (user.userMetadata?['full_name'] as String?) ?? 'Cliente';
+    try {
+      final row = await Supabase.instance.client
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .maybeSingle();
+      return (row?['full_name'] as String?) ?? fallback;
+    } catch (_) {
+      return fallback;
+    }
   }
 
   // ------------------------------------------------------------ login
 
   Future<String?> signIn({required String identifier, required String password}) async {
-    if (identifier.trim().isEmpty) return 'Informe seu CPF ou e-mail';
-    if (password.length < 4) return 'Senha muito curta';
+    final email = normalizeEmail(identifier);
+    if (email.isEmpty) return 'Informe seu e-mail';
+    if (!isValidEmail(email)) return 'Informe um e-mail válido';
+    if (password.length < 6) return 'A senha precisa ter pelo menos 6 caracteres';
 
-    await Future.delayed(const Duration(milliseconds: 700));
-
-    final account = _accounts[normalizeIdentifier(identifier)];
-    if (account == null || account.passwordHash != _hash(account.salt, password)) {
-      return 'CPF/e-mail ou senha incorretos';
+    try {
+      await _auth.signInWithPassword(email: email, password: password);
+      return null; // a sessão chega pelo onAuthStateChange
+    } on AuthException catch (e) {
+      return _mapError(e);
+    } catch (_) {
+      return _networkError;
     }
-
-    _startSession(account.id);
-    return null; // null = sucesso
   }
 
-  /// Cria a conta e já loga o usuário.
+  /// Cria a conta. Se o projeto exigir confirmação por e-mail, o usuário
+  /// precisa confirmar antes de entrar.
   Future<String?> signUp({
     required String name,
     required String identifier,
     required String password,
   }) async {
-    if (name.trim().isEmpty) return 'Informe seu nome completo';
-    if (identifier.trim().isEmpty) return 'Informe seu CPF ou e-mail';
-    if (password.length < 4) return 'Senha muito curta';
+    if (name.trim().length < 2) return 'Informe seu nome completo';
+    final email = normalizeEmail(identifier);
+    if (!isValidEmail(email)) return 'Informe um e-mail válido';
+    if (password.length < 6) return 'A senha precisa ter pelo menos 6 caracteres';
 
-    final id = normalizeIdentifier(identifier);
-    if (!_isValidIdentifier(id)) return 'Informe um e-mail válido ou um CPF com 11 dígitos';
-
-    await Future.delayed(const Duration(milliseconds: 900));
-
-    if (_accounts.containsKey(id)) {
-      return 'Já existe uma conta com esse CPF ou e-mail';
+    try {
+      final res = await _auth.signUp(
+        email: email,
+        password: password,
+        data: {'full_name': name.trim()},
+      );
+      if (res.session == null) {
+        return 'Confirme seu e-mail pelo link que enviamos e depois entre';
+      }
+      return null;
+    } on AuthException catch (e) {
+      return _mapError(e);
+    } catch (_) {
+      return _networkError;
     }
-
-    final salt = _newSalt();
-    _accounts[id] = Account(
-      id: id,
-      name: name.trim(),
-      identifier: identifier.trim(),
-      salt: salt,
-      passwordHash: _hash(salt, password),
-    );
-    _saveAccounts();
-
-    _startSession(id);
-    return null;
   }
 
   void signOut() {
-    _currentId = null;
-    _store.remove(_sessionKey);
-    notifyListeners();
+    _auth.signOut(); // o onAuthStateChange zera a conta e avisa os ouvintes
   }
 
   // ------------------------------------------------- recuperar a senha
 
-  /// Etapa 1: confere se a conta existe e gera o código.
+  /// Etapa 1: envia o código por e-mail (template com {{ .Token }}).
   Future<String?> requestPasswordReset(String identifier) async {
-    if (identifier.trim().isEmpty) return 'Informe seu CPF ou e-mail';
+    final email = normalizeEmail(identifier);
+    if (!isValidEmail(email)) return 'Informe um e-mail válido';
 
-    await Future.delayed(const Duration(milliseconds: 900));
-
-    final id = normalizeIdentifier(identifier);
-    if (!_accounts.containsKey(id)) {
-      return 'Não encontramos uma conta com esses dados';
+    try {
+      await _auth.resetPasswordForEmail(email);
+      _resetEmail = email;
+      _resetVerified = false;
+      return null;
+    } on AuthException catch (e) {
+      return _mapError(e);
+    } catch (_) {
+      return _networkError;
     }
-
-    _resetAccountId = id;
-    _resetCode = (Random.secure().nextInt(900000) + 100000).toString();
-    _resetVerified = false;
-    return null;
   }
 
-  /// Etapa 2: confere o código digitado.
+  /// Etapa 2: confere o código de 6 dígitos. Isso também abre uma sessão
+  /// temporária, necessária para trocar a senha na etapa 3.
   Future<String?> verifyResetCode(String code) async {
-    await Future.delayed(const Duration(milliseconds: 600));
+    final email = _resetEmail;
+    if (email == null) return 'Solicite um novo código';
 
-    if (_resetCode == null) return 'Solicite um novo código';
-    if (code.trim() != _resetCode) return 'Código incorreto';
-
-    _resetVerified = true;
-    return null;
+    try {
+      await _auth.verifyOTP(
+        type: OtpType.recovery,
+        email: email,
+        token: code.trim(),
+      );
+      _resetVerified = true;
+      return null;
+    } on AuthException catch (e) {
+      return _mapError(e);
+    } catch (_) {
+      return _networkError;
+    }
   }
 
-  /// Etapa 3: grava a nova senha da conta.
+  /// Etapa 3: grava a nova senha.
   Future<String?> resetPassword(String newPassword) async {
-    final id = _resetAccountId;
-    final account = id == null ? null : _accounts[id];
-    if (!_resetVerified || account == null) {
+    if (!_resetVerified || _auth.currentSession == null) {
       return 'A recuperação expirou. Comece de novo.';
     }
-    if (newPassword.length < 4) return 'Senha muito curta';
+    if (newPassword.length < 6) return 'A senha precisa ter pelo menos 6 caracteres';
 
-    await Future.delayed(const Duration(milliseconds: 900));
+    try {
+      await _auth.updateUser(UserAttributes(password: newPassword));
+      _resetEmail = null;
+      _resetVerified = false;
+      return null;
+    } on AuthException catch (e) {
+      return _mapError(e);
+    } catch (_) {
+      return _networkError;
+    }
+  }
 
-    final salt = _newSalt();
-    _accounts[account.id] = account.withPassword(salt, _hash(salt, newPassword));
-    _saveAccounts();
-
-    _resetAccountId = null;
-    _resetCode = null;
-    _resetVerified = false;
-    return null;
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
   }
 }
