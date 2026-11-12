@@ -2,14 +2,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Testes de integração contra o Supabase REAL: cadastro (trigger), saldo
-/// pelo livro-razão, Pix entre usuários e RLS.
+/// pelo livro-razão, Pix, caixinhas, chaves Pix e RLS.
 ///
 /// Só rodam quando as credenciais são passadas por --dart-define. No CI
 /// (sem as variáveis) ficam pulados.
 ///
-/// Pré-requisito no painel do Supabase:
-///   Authentication > Providers > Email > desligar "Confirm email"
-///   (senão o cadastro não devolve sessão e o teste avisa).
+/// Pré-requisitos no painel do Supabase:
+///   - Migrações 0001 e 0002 executadas (SQL Editor).
+///   - Authentication > Providers > Email > desligar "Confirm email".
 ///
 /// Como rodar:
 ///   flutter test test/integration --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...
@@ -17,12 +17,11 @@ const _url = String.fromEnvironment('SUPABASE_URL');
 const _anonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 final _enabled = _url.isNotEmpty && _anonKey.isNotEmpty;
 
-/// Cria um cliente isolado (sessão própria) para cada usuário de teste.
+/// Cliente isolado (sessão própria) para cada usuário de teste. O fluxo
+/// implícito não exige armazenamento assíncrono, que o teste não configura.
 SupabaseClient _newClient() => SupabaseClient(
       _url,
       _anonKey,
-      // PKCE exige armazenamento assíncrono, que o teste (sem Flutter) não
-      // configura. O fluxo implícito funciona sem ele.
       authOptions: const AuthClientOptions(
         authFlowType: AuthFlowType.implicit,
         autoRefreshToken: false,
@@ -41,8 +40,7 @@ Future<({SupabaseClient client, String uid, String email})> _signUpUser(
     password: 'senha-teste-123',
     data: {'full_name': 'Usuário $label', 'cpf': ''},
   );
-  final session = res.session;
-  if (session == null) {
+  if (res.session == null) {
     throw StateError(
       'Cadastro não devolveu sessão. Desligue "Confirm email" em '
       'Authentication > Providers > Email no painel do Supabase.',
@@ -53,11 +51,7 @@ Future<({SupabaseClient client, String uid, String email})> _signUpUser(
 
 /// Id da conta do usuário logado (RLS: só enxerga a própria).
 Future<String> _myAccountId(SupabaseClient client, String uid) async {
-  final row = await client
-      .from('accounts')
-      .select('id')
-      .eq('owner_id', uid)
-      .single();
+  final row = await client.from('accounts').select('id').eq('owner_id', uid).single();
   return row['id'] as String;
 }
 
@@ -71,12 +65,20 @@ Future<int> _balanceCents(SupabaseClient client, String accountId) async {
   return (row['balance_cents'] as num).toInt();
 }
 
+/// Id da única caixinha do usuário logado.
+Future<String> _onlyGoalId(SupabaseClient client) async {
+  final row = await client.from('savings_goal_balances').select('goal_id').single();
+  return row['goal_id'] as String;
+}
+
 void main() {
   final skip = _enabled
       ? null
       : 'Defina SUPABASE_URL e SUPABASE_ANON_KEY com --dart-define para rodar';
 
   group('Supabase real', () {
+    // ------------------------------------------------------------ cadastro e saldo
+
     test('cadastro cria perfil e conta automaticamente (trigger)', () async {
       final a = await _signUpUser('perfil');
       final profile = await a.client
@@ -85,9 +87,7 @@ void main() {
           .eq('id', a.uid)
           .single();
       expect(profile['full_name'], 'Usuário perfil');
-
-      final accountId = await _myAccountId(a.client, a.uid);
-      expect(accountId, isNotEmpty);
+      expect(await _myAccountId(a.client, a.uid), isNotEmpty);
     });
 
     test('conta nova começa com saldo zero', () async {
@@ -99,7 +99,6 @@ void main() {
     test('depósito simulado aparece no saldo', () async {
       final a = await _signUpUser('deposito');
       final accountId = await _myAccountId(a.client, a.uid);
-
       await a.client.rpc('simulate_deposit', params: {
         'p_amount_cents': 100000,
         'p_description': 'teste',
@@ -107,19 +106,19 @@ void main() {
       expect(await _balanceCents(a.client, accountId), 100000);
     });
 
+    // ------------------------------------------------------------ Pix
+
     test('Pix entre dois usuários move o saldo nas duas pontas', () async {
       final a = await _signUpUser('pixA');
       final b = await _signUpUser('pixB');
       final accA = await _myAccountId(a.client, a.uid);
       final accB = await _myAccountId(b.client, b.uid);
 
-      // B cadastra a própria chave Pix (RLS permite só na própria conta).
       await b.client.from('pix_keys').insert({
         'account_id': accB,
         'key_type': 'email',
         'key_value': b.email,
       });
-
       await a.client.rpc('simulate_deposit', params: {
         'p_amount_cents': 10000,
         'p_description': 'saldo inicial',
@@ -146,9 +145,9 @@ void main() {
 
       await expectLater(
         Future(() async => a.client.rpc('pix_transfer', params: {
-          'p_key_value': b.email,
-          'p_amount_cents': 999999999,
-        })),
+              'p_key_value': b.email,
+              'p_amount_cents': 999999999,
+            })),
         throwsA(isA<PostgrestException>().having(
           (e) => e.message,
           'message',
@@ -156,6 +155,8 @@ void main() {
         )),
       );
     });
+
+    // ------------------------------------------------------------ RLS (livro-razão)
 
     test('RLS: um usuário não enxerga o livro-razão de outro', () async {
       final a = await _signUpUser('rlsA');
@@ -179,10 +180,10 @@ void main() {
 
       await expectLater(
         Future(() async => a.client.from('ledger_entries').insert({
-          'account_id': accountId,
-          'amount_cents': 999999,
-          'kind': 'deposit',
-        })),
+              'account_id': accountId,
+              'amount_cents': 999999,
+              'kind': 'deposit',
+            })),
         throwsA(isA<PostgrestException>()),
       );
     });
@@ -207,6 +208,169 @@ void main() {
         // recusado pelo banco: também é o comportamento esperado
       }
       expect(await _balanceCents(a.client, accountId), 5000);
+    });
+
+    // ------------------------------------------------------------ caixinhas
+
+    test('caixinha: criar, guardar e resgatar movem o saldo certo', () async {
+      final a = await _signUpUser('caixa');
+      final accId = await _myAccountId(a.client, a.uid);
+      await a.client.rpc('simulate_deposit', params: {
+        'p_amount_cents': 10000,
+        'p_description': 'saldo inicial',
+      });
+
+      await a.client.rpc('create_savings_goal', params: {
+        'p_name': 'Viagem',
+        'p_target_cents': 50000,
+      });
+      final goalId = await _onlyGoalId(a.client);
+
+      await a.client.rpc('savings_move', params: {
+        'p_goal_id': goalId,
+        'p_amount_cents': 3000,
+        'p_direction': 'in',
+      });
+      expect(await _balanceCents(a.client, accId), 7000);
+      final afterIn = await a.client
+          .from('savings_goal_balances')
+          .select('saved_cents')
+          .eq('goal_id', goalId)
+          .single();
+      expect((afterIn['saved_cents'] as num).toInt(), 3000);
+
+      await a.client.rpc('savings_move', params: {
+        'p_goal_id': goalId,
+        'p_amount_cents': 1000,
+        'p_direction': 'out',
+      });
+      expect(await _balanceCents(a.client, accId), 8000);
+      final afterOut = await a.client
+          .from('savings_goal_balances')
+          .select('saved_cents')
+          .eq('goal_id', goalId)
+          .single();
+      expect((afterOut['saved_cents'] as num).toInt(), 2000);
+    });
+
+    test('caixinha: guardar sem saldo é recusado', () async {
+      final a = await _signUpUser('caixaSemSaldo');
+      await a.client.rpc('create_savings_goal', params: {
+        'p_name': 'Reserva',
+        'p_target_cents': 10000,
+      });
+      final goalId = await _onlyGoalId(a.client);
+
+      await expectLater(
+        Future(() async => a.client.rpc('savings_move', params: {
+              'p_goal_id': goalId,
+              'p_amount_cents': 500,
+              'p_direction': 'in',
+            })),
+        throwsA(isA<PostgrestException>().having(
+          (e) => e.message,
+          'message',
+          contains('saldo insuficiente'),
+        )),
+      );
+    });
+
+    test('caixinha: resgatar mais do que o guardado é recusado', () async {
+      final a = await _signUpUser('caixaResgate');
+      await a.client.rpc('simulate_deposit', params: {
+        'p_amount_cents': 5000,
+        'p_description': 'saldo',
+      });
+      await a.client.rpc('create_savings_goal', params: {
+        'p_name': 'Reserva',
+        'p_target_cents': 10000,
+      });
+      final goalId = await _onlyGoalId(a.client);
+      await a.client.rpc('savings_move', params: {
+        'p_goal_id': goalId,
+        'p_amount_cents': 1000,
+        'p_direction': 'in',
+      });
+
+      await expectLater(
+        Future(() async => a.client.rpc('savings_move', params: {
+              'p_goal_id': goalId,
+              'p_amount_cents': 2000,
+              'p_direction': 'out',
+            })),
+        throwsA(isA<PostgrestException>().having(
+          (e) => e.message,
+          'message',
+          contains('valor maior que o guardado'),
+        )),
+      );
+    });
+
+    test('caixinha: outro usuário não vê nem movimenta a caixinha', () async {
+      final a = await _signUpUser('caixaA');
+      final b = await _signUpUser('caixaB');
+      await a.client.rpc('create_savings_goal', params: {
+        'p_name': 'Privada',
+        'p_target_cents': 10000,
+      });
+      final goalId = await _onlyGoalId(a.client);
+
+      final visivel = await b.client.from('savings_goal_balances').select();
+      expect(visivel, isEmpty);
+
+      await expectLater(
+        Future(() async => b.client.rpc('savings_move', params: {
+              'p_goal_id': goalId,
+              'p_amount_cents': 100,
+              'p_direction': 'in',
+            })),
+        throwsA(isA<PostgrestException>().having(
+          (e) => e.message,
+          'message',
+          contains('caixinha não encontrada'),
+        )),
+      );
+    });
+
+    // ------------------------------------------------------------ chaves Pix
+
+    test('chave Pix: cadastrar, listar e remover pela própria conta', () async {
+      final a = await _signUpUser('pixKey');
+      final accId = await _myAccountId(a.client, a.uid);
+
+      await a.client.from('pix_keys').insert({
+        'account_id': accId,
+        'key_type': 'email',
+        'key_value': a.email,
+      });
+      final listed = await a.client.from('pix_keys').select('id').eq('key_value', a.email);
+      expect(listed.length, 1);
+
+      await a.client.from('pix_keys').delete().eq('key_value', a.email);
+      final depois = await a.client.from('pix_keys').select('id').eq('key_value', a.email);
+      expect(depois, isEmpty);
+    });
+
+    test('chave Pix: outro usuário não consegue cadastrar a mesma chave', () async {
+      final a = await _signUpUser('pixDonoA');
+      final b = await _signUpUser('pixDonoB');
+      final accA = await _myAccountId(a.client, a.uid);
+      final accB = await _myAccountId(b.client, b.uid);
+
+      await a.client.from('pix_keys').insert({
+        'account_id': accA,
+        'key_type': 'email',
+        'key_value': a.email,
+      });
+
+      await expectLater(
+        Future(() async => b.client.from('pix_keys').insert({
+              'account_id': accB,
+              'key_type': 'email',
+              'key_value': a.email,
+            })),
+        throwsA(isA<PostgrestException>()),
+      );
     });
   }, skip: skip);
 }
