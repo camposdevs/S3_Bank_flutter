@@ -13,6 +13,7 @@ import 'providers/user_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'screens/splash_screen.dart';
 import 'services/account_data_coordinator.dart';
+import 'services/ledger_repository.dart';
 import 'services/local_store.dart';
 
 Future<void> main() async {
@@ -30,7 +31,7 @@ Future<void> main() async {
 
   final auth = AuthProvider();
   final user = UserProvider();
-  final wallet = WalletProvider();
+  final wallet = WalletProvider()..attachLedger(LedgerRepository());
   final savings = SavingsProvider();
   final pixKeys = PixKeysProvider();
   final card = CardProvider(

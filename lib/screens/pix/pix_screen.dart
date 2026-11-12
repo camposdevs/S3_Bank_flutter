@@ -159,13 +159,14 @@ class PixScreen extends StatelessWidget {
                   const SizedBox(height: 20),
                   GradientButton(
                     label: 'Confirmar pagamento',
-                    onTap: () {
+                    onTap: () async {
                       if (!formKey.currentState!.validate()) return;
                       final amount = _parseAmount(amountController.text)!;
                       final recipient = recipientController.text.trim();
-                      final ok = wallet.sendPix(amount, recipient: recipient);
+                      final error = await wallet.payPix(amount, recipient: recipient);
+                      if (!ctx.mounted || !context.mounted) return;
                       Navigator.of(ctx).pop();
-                      if (ok) {
+                      if (error == null) {
                         HapticFeedback.mediumImpact();
                         // O "Copia e Cola" pode ser enorme: encurta no aviso.
                         final shown = recipient.length > 40
@@ -178,8 +179,8 @@ class PixScreen extends StatelessWidget {
                         );
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Não foi possível enviar o Pix.'),
+                          SnackBar(
+                            content: Text(error),
                           ),
                         );
                       }
@@ -260,15 +261,18 @@ class PixScreen extends StatelessWidget {
                     : _buildQrResult(
                         payload: generatedPayload!,
                         amount: _parseAmount(amountController.text)!,
-                        onSimulatePayment: () {
+                        onSimulatePayment: () async {
                           final amount = _parseAmount(amountController.text)!;
                           final sender = senderController.text.trim().isEmpty
                               ? 'Recebimento Pix'
                               : senderController.text.trim();
-                          wallet.receivePix(amount, sender: sender);
+                          final error = await wallet.receiveSimulatedPix(amount, sender: sender);
+                          if (!ctx.mounted || !context.mounted) return;
                           Navigator.of(ctx).pop();
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Pagamento simulado com sucesso!')),
+                            SnackBar(
+                              content: Text(error ?? 'Pagamento simulado com sucesso!'),
+                            ),
                           );
                         },
                       ),

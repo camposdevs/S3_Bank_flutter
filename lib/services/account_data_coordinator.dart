@@ -92,9 +92,13 @@ class AccountDataCoordinator with WidgetsBindingObserver {
     if (previous != null) _saveNow(previous); // conta que está saindo
     _loadedId = null;
 
-    if (account == null) return;
+    if (account == null) {
+      wallet.clearSession(); // não deixa o saldo de quem saiu aparecer
+      return;
+    }
     _load(account);
     _loadedId = account.id;
+    wallet.refreshFromServer(); // no modo banco, busca saldo e extrato
   }
 
   void _load(Account account) {
