@@ -45,7 +45,10 @@ class AuthProvider extends ChangeNotifier {
   String? _resetEmail;
   bool _resetVerified = false;
 
-  AuthProvider() {
+  /// [connect] = false cria o provider sem tocar no Supabase (usado nos
+  /// testes de widget e de dados locais). Nesse modo ele começa deslogado.
+  AuthProvider({bool connect = true}) {
+    if (!connect) return;
     _sub = _auth.onAuthStateChange.listen((state) => _onSession(state.session));
     _onSession(_auth.currentSession);
   }

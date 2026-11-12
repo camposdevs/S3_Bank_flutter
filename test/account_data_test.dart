@@ -28,7 +28,7 @@ class Env {
 
   static Future<Env> open() async {
     final store = await LocalStore.create();
-    final auth = AuthProvider(store);
+    final auth = AuthProvider(connect: false);
     final user = UserProvider();
     final wallet = WalletProvider();
     final savings = SavingsProvider();

@@ -23,7 +23,7 @@ void main() {
     addTearDown(tester.view.reset);
 
     final auth = (await tester.runAsync(
-      () async => AuthProvider(await LocalStore.create()),
+      () async => AuthProvider(connect: false),
     ))!;
 
     await tester.pumpWidget(
