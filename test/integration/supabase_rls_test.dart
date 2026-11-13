@@ -28,6 +28,28 @@ SupabaseClient _newClient() => SupabaseClient(
       ),
     );
 
+/// O Supabase limita a criação de contas por tempo. Quando isso acontece
+/// (429), espera e tenta de novo, em vez de falhar o teste.
+Future<AuthResponse> _signUpWithRetry(
+  SupabaseClient client, {
+  required String email,
+  required String label,
+}) async {
+  for (var tentativa = 1; ; tentativa++) {
+    try {
+      return await client.auth.signUp(
+        email: email,
+        password: '123456',
+        data: {'full_name': 'Usuário $label', 'cpf': ''},
+      );
+    } on AuthApiException catch (e) {
+      final limitado = '${e.statusCode}' == '429' || e.code == 'over_request_rate_limit';
+      if (!limitado || tentativa >= 6) rethrow;
+      await Future.delayed(Duration(seconds: 20 * tentativa));
+    }
+  }
+}
+
 /// Cadastra um usuário único e devolve o cliente já logado.
 Future<({SupabaseClient client, String uid, String email})> _signUpUser(
   String label,
@@ -35,10 +57,10 @@ Future<({SupabaseClient client, String uid, String email})> _signUpUser(
   final client = _newClient();
   final stamp = DateTime.now().microsecondsSinceEpoch;
   final email = 'teste.$label.$stamp@example.com';
-  final res = await client.auth.signUp(
+  final res = await _signUpWithRetry(
+    client,
     email: email,
-    password: '123456',
-    data: {'full_name': 'Usuário $label', 'cpf': ''},
+    label: label,
   );
   if (res.session == null) {
     throw StateError(
@@ -532,6 +554,180 @@ void main() {
           .single();
       // R$ 10 -> 15 + 10/10 = 16 pontos; o valor real continua o do servidor.
       expect((row['points'] as num).toInt(), 16);
+    });
+
+    // ------------------------------------------------------------ cobranças
+
+    test('cobrança: cria com valor e txid, outro usuário paga e o saldo move', () async {
+      final rec = await _signUpUser('cobRec');
+      final pag = await _signUpUser('cobPag');
+      final accRec = await _myAccountId(rec.client, rec.uid);
+      final accPag = await _myAccountId(pag.client, pag.uid);
+      await rec.client.from('pix_keys').insert({
+        'account_id': accRec,
+        'key_type': 'email',
+        'key_value': rec.email,
+      });
+      await pag.client.rpc('simulate_deposit', params: {
+        'p_amount_cents': 10000,
+        'p_description': 'saldo',
+      });
+
+      final created = (await rec.client.rpc('create_charge', params: {
+        'p_amount_cents': 2500,
+        'p_description': 'teste',
+        'p_expires_minutes': 30,
+      })) as List;
+      final txid = created.first['charge_txid'] as String;
+      expect(txid.length, 25);
+
+      final info = (await pag.client.rpc('get_charge', params: {'p_txid': txid})) as List;
+      expect((info.first['charge_amount_cents'] as num).toInt(), 2500);
+      expect(info.first['charge_status'], 'open');
+
+      final paid = await pag.client.rpc('pay_charge', params: {'p_txid': txid});
+      expect((paid as num).toInt(), 2500);
+      expect(await _balanceCents(pag.client, accPag), 7500);
+      expect(await _balanceCents(rec.client, accRec), 2500);
+    });
+
+    test('cobrança: não pode ser paga duas vezes', () async {
+      final rec = await _signUpUser('cobDup');
+      final pag = await _signUpUser('cobDupPag');
+      final accRec = await _myAccountId(rec.client, rec.uid);
+      await rec.client.from('pix_keys').insert({
+        'account_id': accRec,
+        'key_type': 'email',
+        'key_value': rec.email,
+      });
+      await pag.client.rpc('simulate_deposit', params: {
+        'p_amount_cents': 10000,
+        'p_description': 'saldo',
+      });
+      final created = (await rec.client.rpc('create_charge', params: {
+        'p_amount_cents': 1000,
+        'p_description': 'teste',
+        'p_expires_minutes': 30,
+      })) as List;
+      final txid = created.first['charge_txid'] as String;
+      await pag.client.rpc('pay_charge', params: {'p_txid': txid});
+
+      await expectLater(
+        Future(() async => pag.client.rpc('pay_charge', params: {'p_txid': txid})),
+        throwsA(isA<PostgrestException>().having(
+          (e) => e.message,
+          'message',
+          contains('cobrança já foi paga'),
+        )),
+      );
+    });
+
+    test('cobrança: expirada não pode ser paga', () async {
+      final rec = await _signUpUser('cobExp');
+      final pag = await _signUpUser('cobExpPag');
+      final accRec = await _myAccountId(rec.client, rec.uid);
+      await rec.client.from('pix_keys').insert({
+        'account_id': accRec,
+        'key_type': 'email',
+        'key_value': rec.email,
+      });
+      await pag.client.rpc('simulate_deposit', params: {
+        'p_amount_cents': 10000,
+        'p_description': 'saldo',
+      });
+      // validade no passado: já nasce expirada
+      final created = (await rec.client.rpc('create_charge', params: {
+        'p_amount_cents': 1000,
+        'p_description': 'teste',
+        'p_expires_minutes': -1,
+      })) as List;
+      final txid = created.first['charge_txid'] as String;
+
+      final info = (await pag.client.rpc('get_charge', params: {'p_txid': txid})) as List;
+      expect(info.first['charge_status'], 'expired');
+
+      await expectLater(
+        Future(() async => pag.client.rpc('pay_charge', params: {'p_txid': txid})),
+        throwsA(isA<PostgrestException>().having(
+          (e) => e.message,
+          'message',
+          contains('cobrança expirada'),
+        )),
+      );
+    });
+
+    test('cobrança: o próprio recebedor não consegue pagar a sua', () async {
+      final rec = await _signUpUser('cobSelf');
+      final accRec = await _myAccountId(rec.client, rec.uid);
+      await rec.client.from('pix_keys').insert({
+        'account_id': accRec,
+        'key_type': 'email',
+        'key_value': rec.email,
+      });
+      await rec.client.rpc('simulate_deposit', params: {
+        'p_amount_cents': 10000,
+        'p_description': 'saldo',
+      });
+      final created = (await rec.client.rpc('create_charge', params: {
+        'p_amount_cents': 1000,
+        'p_description': 'teste',
+        'p_expires_minutes': 30,
+      })) as List;
+      final txid = created.first['charge_txid'] as String;
+
+      await expectLater(
+        Future(() async => rec.client.rpc('pay_charge', params: {'p_txid': txid})),
+        throwsA(isA<PostgrestException>().having(
+          (e) => e.message,
+          'message',
+          contains('própria cobrança'),
+        )),
+      );
+    });
+
+    test('cobrança: pagamento sem saldo é recusado', () async {
+      final rec = await _signUpUser('cobSemSaldo');
+      final pag = await _signUpUser('cobSemSaldoPag');
+      final accRec = await _myAccountId(rec.client, rec.uid);
+      await rec.client.from('pix_keys').insert({
+        'account_id': accRec,
+        'key_type': 'email',
+        'key_value': rec.email,
+      });
+      final created = (await rec.client.rpc('create_charge', params: {
+        'p_amount_cents': 999999,
+        'p_description': 'teste',
+        'p_expires_minutes': 30,
+      })) as List;
+      final txid = created.first['charge_txid'] as String;
+
+      await expectLater(
+        Future(() async => pag.client.rpc('pay_charge', params: {'p_txid': txid})),
+        throwsA(isA<PostgrestException>().having(
+          (e) => e.message,
+          'message',
+          contains('saldo insuficiente'),
+        )),
+      );
+    });
+
+    test('cobrança: outro usuário não lê a tabela de cobranças direto', () async {
+      final rec = await _signUpUser('cobRls');
+      final outro = await _signUpUser('cobRlsOutro');
+      final accRec = await _myAccountId(rec.client, rec.uid);
+      await rec.client.from('pix_keys').insert({
+        'account_id': accRec,
+        'key_type': 'email',
+        'key_value': rec.email,
+      });
+      await rec.client.rpc('create_charge', params: {
+        'p_amount_cents': 1000,
+        'p_description': 'privada',
+        'p_expires_minutes': 30,
+      });
+
+      final visivel = await outro.client.from('pix_charges').select();
+      expect(visivel, isEmpty);
     });
   }, skip: skip);
 }

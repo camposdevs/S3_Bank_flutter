@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/pix_payload_parser.dart';
+import '../../services/ledger_repository.dart';
 import 'qr_scanner_screen.dart';
 import '../../animations/animations.dart';
 import '../../core/pix_payload_generator.dart';
@@ -114,8 +115,78 @@ class PixScreen extends StatelessWidget {
       );
       return;
     }
+    if (parsed.txid != null) {
+      await _payChargeFromQr(context, parsed.txid!);
+      return;
+    }
     _showPayModal(context, prefill: parsed);
   }
+
+  /// Cobrança com valor e validade: mostra quem recebe e quanto, e só paga
+  /// se a pessoa confirmar.
+  Future<void> _payChargeFromQr(BuildContext context, String txid) async {
+    final wallet = context.read<WalletProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    if (!wallet.isServerBacked) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Cobranças exigem conexão com o banco.')),
+      );
+      return;
+    }
+
+    Map<String, dynamic> info;
+    try {
+      info = await wallet.getCharge(txid);
+    } on LedgerException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      return;
+    }
+
+    final amount = (info['charge_amount_cents'] as num).toInt() / 100;
+    final name = info['receiver_name'] as String? ?? 'Destinatário';
+    final description = info['charge_description'] as String?;
+    final status = info['charge_status'] as String;
+    final expiresAt = DateTime.parse(info['charge_expires_at'] as String);
+
+    if (status != 'open' || expiresAt.isBefore(DateTime.now())) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Esta cobrança não está mais disponível.')),
+      );
+      return;
+    }
+    if (!context.mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirmar pagamento'),
+        content: Text(
+          'Pagar ${_brl(amount)} para $name?'
+          '${description == null ? '' : '\n$description'}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Pagar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final error = await wallet.payCharge(txid);
+    messenger.showSnackBar(
+      SnackBar(content: Text(error ?? 'Pagamento de ${_brl(amount)} enviado!')),
+    );
+  }
+
+  static String _brl(double value) =>
+      'R\$ ${value.toStringAsFixed(2).replaceAll('.', ',')}';
 
   /// Valor no formato do campo (ex.: 25,50).
   static String _amountField(double value) =>
@@ -190,6 +261,14 @@ class PixScreen extends StatelessWidget {
                       // Aceita chave, e-mail ou o "Copia e Cola" inteiro do QR.
                       final typed = recipientController.text.trim();
                       final parsed = PixPayloadParser.tryParse(typed);
+                      if (parsed?.txid != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Para pagar uma cobrança, use a câmera (QR Code).'),
+                          ),
+                        );
+                        return;
+                      }
                       final recipient = parsed?.key ?? typed;
                       final amount = parsed?.amount ?? _parseAmount(amountController.text)!;
                       final error = await wallet.payPix(amount, recipient: recipient);
@@ -273,17 +352,43 @@ class PixScreen extends StatelessWidget {
                         formKey: formKey,
                         senderController: senderController,
                         amountController: amountController,
-                        onGenerate: () {
+                        onGenerate: () async {
                           if (!formKey.currentState!.validate()) return;
                           final amount = _parseAmount(amountController.text)!;
                           final sender = senderController.text.trim();
-                          final payload = PixPayloadGenerator.generate(
-                            pixKey: receiveKey.payloadValue,
-                            merchantName: merchantName,
-                            merchantCity: _kMerchantCity,
-                            amount: amount,
-                            description: sender.isEmpty ? null : 'Cobranca de $sender',
-                          );
+                          final description = sender.isEmpty ? null : 'Cobranca de $sender';
+                          String payload;
+                          if (wallet.isServerBacked) {
+                            try {
+                              final charge = await wallet.createCharge(
+                                amount: amount,
+                                description: description,
+                              );
+                              payload = PixPayloadGenerator.generate(
+                                pixKey: charge.pixKey,
+                                merchantName: merchantName,
+                                merchantCity: _kMerchantCity,
+                                amount: amount,
+                                description: description,
+                                txId: charge.txid,
+                              );
+                            } on LedgerException catch (e) {
+                              if (!ctx.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(e.message)),
+                              );
+                              return;
+                            }
+                          } else {
+                            payload = PixPayloadGenerator.generate(
+                              pixKey: receiveKey.payloadValue,
+                              merchantName: merchantName,
+                              merchantCity: _kMerchantCity,
+                              amount: amount,
+                              description: description,
+                            );
+                          }
+                          if (!ctx.mounted) return;
                           setState(() => generatedPayload = payload);
                         },
                       )

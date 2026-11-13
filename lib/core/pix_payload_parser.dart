@@ -9,11 +9,15 @@ class PixPayload {
   final String? merchantName;
   final String? merchantCity;
 
+  /// Identificador da cobrança (campo 62/05). Null em QR estático.
+  final String? txid;
+
   const PixPayload({
     required this.key,
     this.amount,
     this.merchantName,
     this.merchantCity,
+    this.txid,
   });
 }
 
@@ -61,11 +65,16 @@ class PixPayloadParser {
       }
     }
 
+    final additional = top['62'];
+    final txid = additional == null ? null : _readTlv(additional)['05'];
+
     return PixPayload(
       key: key,
       amount: amount,
       merchantName: top['59'],
       merchantCity: top['60'],
+      // "***" é o valor padrão do gerador quando não há cobrança.
+      txid: (txid == null || txid == '***') ? null : txid,
     );
   }
 

@@ -12,6 +12,19 @@ class LedgerException implements Exception {
   String toString() => message;
 }
 
+/// Cobrança criada: txid e chave para montar o QR Code.
+class ChargeCreated {
+  final String txid;
+  final String pixKey;
+  final DateTime expiresAt;
+
+  const ChargeCreated({
+    required this.txid,
+    required this.pixKey,
+    required this.expiresAt,
+  });
+}
+
 /// Acesso ao banco (Supabase).
 ///
 /// Regras: saldos são lidos de views (somas do livro-razão) e nunca
@@ -131,6 +144,38 @@ class LedgerRepository {
         return row == null ? null : Map<String, dynamic>.from(row);
       });
 
+  // ------------------------------------------------------------ cobranças
+
+  Future<ChargeCreated> createCharge({
+    required int amountCents,
+    String? description,
+    int expiresMinutes = 30,
+  }) =>
+      _run(() async {
+        final rows = (await _client.rpc('create_charge', params: {
+          'p_amount_cents': amountCents,
+          'p_description': description,
+          'p_expires_minutes': expiresMinutes,
+        })) as List;
+        final row = Map<String, dynamic>.from(rows.first as Map);
+        return ChargeCreated(
+          txid: row['charge_txid'] as String,
+          pixKey: row['charge_pix_key'] as String,
+          expiresAt: DateTime.parse(row['charge_expires_at'] as String),
+        );
+      });
+
+  Future<Map<String, dynamic>> getCharge(String txid) => _run(() async {
+        final rows = (await _client.rpc('get_charge', params: {'p_txid': txid})) as List;
+        return Map<String, dynamic>.from(rows.first as Map);
+      });
+
+  /// Paga a cobrança. Devolve o valor pago em centavos.
+  Future<int> payCharge(String txid) => _run(() async {
+        final result = await _client.rpc('pay_charge', params: {'p_txid': txid});
+        return (result as num).toInt();
+      });
+
   // ------------------------------------------------------------ mapeamento
 
   /// Converte uma linha de `ledger_entries` no modelo que as telas usam.
@@ -218,6 +263,12 @@ class LedgerRepository {
       return 'Esta chave já está em uso';
     }
     if (m.contains('tipo inválido')) return 'Tipo de chave inválido';
+    if (m.contains('cobrança já foi paga')) return 'Esta cobrança já foi paga';
+    if (m.contains('cobrança expirada')) return 'Esta cobrança expirou';
+    if (m.contains('cobrança indisponível')) return 'Cobrança indisponível';
+    if (m.contains('cobrança não encontrada')) return 'Cobrança não encontrada';
+    if (m.contains('própria cobrança')) return 'Você não pode pagar a sua própria cobrança';
+    if (m.contains('cadastre uma chave pix')) return 'Cadastre uma chave Pix antes de cobrar';
     if (m.contains('could not find the function') || m.contains('schema cache')) {
       return 'Banco desatualizado: execute a migração 0003 no Supabase';
     }

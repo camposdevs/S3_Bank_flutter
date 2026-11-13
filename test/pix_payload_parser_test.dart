@@ -43,4 +43,28 @@ void main() {
     expect(PixPayloadParser.tryParse('https://exemplo.com'), isNull);
     expect(PixPayloadParser.tryParse(''), isNull);
   });
+
+  test('lê o identificador da cobrança (txid) do QR gerado pelo banco', () {
+    const txid = 'a1b2c3d4e5f6a7b8c9d0e1f2a'; // 25 caracteres, como o banco gera
+    final qr = PixPayloadGenerator.generate(
+      pixKey: 'maria@email.com',
+      merchantName: 'Maria Teste',
+      merchantCity: 'SAO PAULO',
+      amount: 12.34,
+      txId: txid,
+    );
+    final parsed = PixPayloadParser.tryParse(qr);
+    expect(parsed, isNotNull);
+    expect(parsed!.txid, txid);
+    expect(parsed.amount, 12.34);
+  });
+
+  test('QR sem cobrança (txid padrão ***) não tem txid', () {
+    final qr = PixPayloadGenerator.generate(
+      pixKey: 'maria@email.com',
+      merchantName: 'Maria Teste',
+      merchantCity: 'SAO PAULO',
+    );
+    expect(PixPayloadParser.tryParse(qr)!.txid, isNull);
+  });
 }

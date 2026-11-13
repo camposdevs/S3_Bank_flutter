@@ -62,6 +62,40 @@ class WalletProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Cria uma cobrança com valor e validade (só no modo banco).
+  Future<ChargeCreated> createCharge({required double amount, String? description}) {
+    final ledger = _ledger;
+    if (ledger == null) {
+      throw const LedgerException('Cobranças exigem conexão com o banco');
+    }
+    return ledger.createCharge(
+      amountCents: (_round2(amount) * 100).round(),
+      description: description,
+    );
+  }
+
+  /// Dados de uma cobrança antes de pagar. Só no modo banco.
+  Future<Map<String, dynamic>> getCharge(String txid) {
+    final ledger = _ledger;
+    if (ledger == null) {
+      throw const LedgerException('Cobranças exigem conexão com o banco');
+    }
+    return ledger.getCharge(txid);
+  }
+
+  /// Paga uma cobrança. Retorna null em sucesso ou a mensagem de erro.
+  Future<String?> payCharge(String txid) async {
+    final ledger = _ledger;
+    if (ledger == null) return 'Indisponível no momento';
+    try {
+      await ledger.payCharge(txid);
+      await refreshFromServer();
+      return null;
+    } on LedgerException catch (e) {
+      return e.message;
+    }
+  }
+
   /// Esvazia a carteira quando alguém sai, para os dados não aparecerem
   /// para o próximo usuário.
   void clearSession() {
