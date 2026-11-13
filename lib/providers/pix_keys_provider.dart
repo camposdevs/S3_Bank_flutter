@@ -179,6 +179,9 @@ class PixKeysProvider extends ChangeNotifier {
   /// Liga as chaves ao banco. Sem isso, usa os dados locais.
   void attachLedger(LedgerRepository ledger) {
     _ledger = ledger;
+    // Sem chaves de exemplo no modo banco. Antes, elas bloqueavam o cadastro
+    // com "Chave já cadastrada" mesmo sem existir no banco.
+    _keys.clear();
   }
 
   bool get isServerBacked => _ledger != null;

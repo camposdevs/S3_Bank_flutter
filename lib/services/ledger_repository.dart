@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/transaction.dart';
@@ -108,13 +109,12 @@ class LedgerRepository {
         return rows.map((r) => Map<String, dynamic>.from(r)).toList();
       });
 
+  /// Cadastro pela função `register_pix_key` (migração 0003).
   Future<void> insertPixKey({required String keyType, required String keyValue}) =>
       _run(() async {
-        final account = await _client.from('accounts').select('id').single();
-        await _client.from('pix_keys').insert({
-          'account_id': account['id'],
-          'key_type': keyType,
-          'key_value': keyValue,
+        await _client.rpc('register_pix_key', params: {
+          'p_key_type': keyType,
+          'p_key_value': keyValue,
         });
       });
 
@@ -184,8 +184,11 @@ class LedgerRepository {
     try {
       return await op();
     } on PostgrestException catch (e) {
+      // Aparece no console (flutter run) para diagnosticar a causa real.
+      debugPrint('[banco] ${e.code}: ${e.message} ${e.details ?? ''}');
       throw LedgerException(_friendly(e.message));
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[banco] erro de conexão: $e');
       throw const LedgerException('Sem conexão com o servidor. Tente de novo');
     }
   }
@@ -202,8 +205,15 @@ class LedgerRepository {
     if (m.contains('conta não encontrada')) return 'Conta não encontrada';
     // Chave duplicada ou de outra pessoa: mensagem genérica, para não
     // revelar se uma chave existe em outra conta.
-    if (m.contains('duplicate key') || m.contains('row-level security')) {
-      return 'Esta chave não pode ser cadastrada';
+    if (m.contains('chave já em uso') || m.contains('duplicate key')) {
+      return 'Esta chave já está em uso';
+    }
+    if (m.contains('tipo inválido')) return 'Tipo de chave inválido';
+    if (m.contains('could not find the function') || m.contains('schema cache')) {
+      return 'Banco desatualizado: execute a migração 0003 no Supabase';
+    }
+    if (m.contains('row-level security')) {
+      return 'Não foi possível cadastrar esta chave';
     }
     return 'Não foi possível concluir a operação';
   }

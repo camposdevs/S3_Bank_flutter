@@ -37,6 +37,9 @@ class WalletProvider extends ChangeNotifier {
   /// Liga a carteira ao banco. Chame depois do Supabase inicializado.
   void attachLedger(LedgerRepository ledger) {
     _ledger = ledger;
+    // Descarta o saldo e o extrato de exemplo: no modo banco, só vale o servidor.
+    _balance = 0;
+    _transactions.clear();
   }
 
   /// Busca saldo e extrato no banco. Sem efeito no modo local.

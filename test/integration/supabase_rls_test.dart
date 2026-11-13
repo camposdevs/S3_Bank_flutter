@@ -372,5 +372,38 @@ void main() {
         throwsA(isA<PostgrestException>()),
       );
     });
+
+    test('chave Pix: cadastro pela função register_pix_key', () async {
+      final a = await _signUpUser('regKey');
+      final id = await a.client.rpc('register_pix_key', params: {
+        'p_key_type': 'email',
+        'p_key_value': a.email,
+      });
+      expect(id, isNotNull);
+
+      final listed = await a.client.from('pix_keys').select('id').eq('key_value', a.email);
+      expect(listed.length, 1);
+    });
+
+    test('chave Pix: chave já usada por outra conta é recusada com mensagem clara', () async {
+      final a = await _signUpUser('regDupA');
+      final b = await _signUpUser('regDupB');
+      await a.client.rpc('register_pix_key', params: {
+        'p_key_type': 'email',
+        'p_key_value': a.email,
+      });
+
+      await expectLater(
+        Future(() async => b.client.rpc('register_pix_key', params: {
+              'p_key_type': 'email',
+              'p_key_value': a.email,
+            })),
+        throwsA(isA<PostgrestException>().having(
+          (e) => e.message,
+          'message',
+          contains('chave já em uso'),
+        )),
+      );
+    });
   }, skip: skip);
 }

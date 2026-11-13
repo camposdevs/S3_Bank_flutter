@@ -26,6 +26,8 @@ class SavingsProvider extends ChangeNotifier {
   /// Liga as caixinhas ao banco. Sem isso, usa os dados locais.
   void attachLedger(LedgerRepository ledger) {
     _ledger = ledger;
+    // Sem caixinhas de exemplo no modo banco: só vale o servidor.
+    _goals.clear();
   }
 
   bool get isServerBacked => _ledger != null;
