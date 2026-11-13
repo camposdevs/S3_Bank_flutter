@@ -729,5 +729,120 @@ void main() {
       final visivel = await outro.client.from('pix_charges').select();
       expect(visivel, isEmpty);
     });
+
+    // ------------------------------------------------------------ extrato: categorias
+
+    test('extrato: saída pode ser categorizada; entrada não', () async {
+      final a = await _signUpUser('catA');
+      final b = await _signUpUser('catB');
+      final accB = await _myAccountId(b.client, b.uid);
+      await b.client.from('pix_keys').insert({
+        'account_id': accB,
+        'key_type': 'email',
+        'key_value': b.email,
+      });
+      await a.client.rpc('simulate_deposit', params: {
+        'p_amount_cents': 10000,
+        'p_description': 'saldo',
+      });
+      await a.client.rpc('pix_transfer', params: {
+        'p_key_value': b.email,
+        'p_amount_cents': 2500,
+        'p_description': 'almoço',
+      });
+
+      final saida = await a.client
+          .from('ledger_entries')
+          .select('id')
+          .eq('kind', 'pix_out')
+          .single();
+      await a.client.rpc('set_transaction_category', params: {
+        'p_ledger_entry_id': saida['id'],
+        'p_category': 'alimentacao',
+      });
+      final marcada = await a.client
+          .from('transaction_categories')
+          .select('category')
+          .eq('ledger_entry_id', saida['id'] as String)
+          .single();
+      expect(marcada['category'], 'alimentacao');
+
+      final entrada = await b.client
+          .from('ledger_entries')
+          .select('id')
+          .eq('kind', 'pix_in')
+          .single();
+      await expectLater(
+        Future(() async => b.client.rpc('set_transaction_category', params: {
+              'p_ledger_entry_id': entrada['id'],
+              'p_category': 'lazer',
+            })),
+        throwsA(isA<PostgrestException>().having(
+          (e) => e.message,
+          'message',
+          contains('só é possível categorizar saídas'),
+        )),
+      );
+    });
+
+    test('extrato: categoria inválida é recusada', () async {
+      final a = await _signUpUser('catInv');
+      await a.client.rpc('simulate_deposit', params: {
+        'p_amount_cents': 10000,
+        'p_description': 'saldo',
+      });
+      final accId = await _myAccountId(a.client, a.uid);
+      await a.client.from('ledger_entries').select('id').eq('account_id', accId);
+      final dep = await a.client.from('ledger_entries').select('id').eq('kind', 'deposit').single();
+
+      await expectLater(
+        Future(() async => a.client.rpc('set_transaction_category', params: {
+              'p_ledger_entry_id': dep['id'],
+              'p_category': 'bobagem',
+            })),
+        throwsA(isA<PostgrestException>().having(
+          (e) => e.message,
+          'message',
+          contains('categoria inválida'),
+        )),
+      );
+    });
+
+    test('extrato: não categoriza movimentação de outro usuário', () async {
+      final a = await _signUpUser('catOwnA');
+      final b = await _signUpUser('catOwnB');
+      final accB = await _myAccountId(b.client, b.uid);
+      await b.client.from('pix_keys').insert({
+        'account_id': accB,
+        'key_type': 'email',
+        'key_value': b.email,
+      });
+      await a.client.rpc('simulate_deposit', params: {
+        'p_amount_cents': 10000,
+        'p_description': 'saldo',
+      });
+      await a.client.rpc('pix_transfer', params: {
+        'p_key_value': b.email,
+        'p_amount_cents': 500,
+        'p_description': 'teste',
+      });
+      final debitoDeA = await a.client
+          .from('ledger_entries')
+          .select('id')
+          .eq('kind', 'pix_out')
+          .single();
+
+      await expectLater(
+        Future(() async => b.client.rpc('set_transaction_category', params: {
+              'p_ledger_entry_id': debitoDeA['id'],
+              'p_category': 'lazer',
+            })),
+        throwsA(isA<PostgrestException>().having(
+          (e) => e.message,
+          'message',
+          contains('lançamento não encontrado'),
+        )),
+      );
+    });
   }, skip: skip);
 }

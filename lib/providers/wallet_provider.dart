@@ -49,10 +49,11 @@ class WalletProvider extends ChangeNotifier {
     try {
       final cents = await ledger.fetchBalanceCents();
       final statement = await ledger.fetchStatement();
+      final categories = await ledger.fetchCategories();
       _balance = _round2(cents / 100);
       _transactions
         ..clear()
-        ..addAll(statement);
+        ..addAll(statement.map((t) => t.copyWith(category: categories[t.id])));
       _syncError = null;
     } on LedgerException catch (e) {
       _syncError = e.message;
@@ -94,6 +95,25 @@ class WalletProvider extends ChangeNotifier {
     } on LedgerException catch (e) {
       return e.message;
     }
+  }
+
+  /// Marca a categoria de uma saída. No modo banco, grava no servidor.
+  /// Retorna null em sucesso ou a mensagem de erro.
+  Future<String?> setCategory(String transactionId, String category) async {
+    final ledger = _ledger;
+    if (ledger != null) {
+      try {
+        await ledger.setCategory(transactionId, category);
+      } on LedgerException catch (e) {
+        return e.message;
+      }
+    }
+    final i = _transactions.indexWhere((t) => t.id == transactionId);
+    if (i >= 0) {
+      _transactions[i] = _transactions[i].copyWith(category: category);
+      notifyListeners();
+    }
+    return null;
   }
 
   /// Esvazia a carteira quando alguém sai, para os dados não aparecerem

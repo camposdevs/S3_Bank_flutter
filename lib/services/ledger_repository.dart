@@ -176,6 +176,25 @@ class LedgerRepository {
         return (result as num).toInt();
       });
 
+  // ------------------------------------------------------------ categorias
+
+  /// Categorias já escolhidas: id da movimentação -> categoria.
+  Future<Map<String, String>> fetchCategories() => _run(() async {
+        final rows = await _client
+            .from('transaction_categories')
+            .select('ledger_entry_id, category');
+        return {
+          for (final r in rows) r['ledger_entry_id'] as String: r['category'] as String,
+        };
+      });
+
+  Future<void> setCategory(String ledgerEntryId, String category) => _run(() async {
+        await _client.rpc('set_transaction_category', params: {
+          'p_ledger_entry_id': ledgerEntryId,
+          'p_category': category,
+        });
+      });
+
   // ------------------------------------------------------------ mapeamento
 
   /// Converte uma linha de `ledger_entries` no modelo que as telas usam.
@@ -263,6 +282,9 @@ class LedgerRepository {
       return 'Esta chave já está em uso';
     }
     if (m.contains('tipo inválido')) return 'Tipo de chave inválido';
+    if (m.contains('categoria inválida')) return 'Categoria inválida';
+    if (m.contains('só é possível categorizar saídas')) return 'Só dá para categorizar saídas';
+    if (m.contains('lançamento não encontrado')) return 'Movimentação não encontrada';
     if (m.contains('cobrança já foi paga')) return 'Esta cobrança já foi paga';
     if (m.contains('cobrança expirada')) return 'Esta cobrança expirou';
     if (m.contains('cobrança indisponível')) return 'Cobrança indisponível';

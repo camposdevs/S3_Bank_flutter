@@ -1,16 +1,15 @@
--- S3 Bank: identificador da cobrança com 25 caracteres (migração 0006, corrigida).
+-- S3 Bank: identificador da cobrança com 25 caracteres.
+-- Rodar DEPOIS do 0005.
+-- Motivo: o gerador de QR (BR Code) corta o campo txid em 25 caracteres.
+-- Com 32, o QR entregava um identificador que o banco não encontrava.
 
--- 1) Remove a regra antiga (26 a 35 caracteres) ANTES de encurtar os dados
-alter table public.pix_charges drop constraint if exists pix_charges_txid_check;
-
--- 2) Encurta as cobranças já criadas (são só testes)
+-- cobranças já criadas: encurta o identificador (são só testes, mas por segurança)
 update public.pix_charges set txid = left(txid, 25) where char_length(txid) > 25;
 
--- 3) Cria a regra nova: de 1 a 25 caracteres
+alter table public.pix_charges drop constraint if exists pix_charges_txid_check;
 alter table public.pix_charges add constraint pix_charges_txid_check
-  check (char_length(txid) between 1 and 25);
+  check (txid ~ '^[A-Za-z0-9]{1,25}$');
 
--- 4) Função que gera o identificador de 25 caracteres
 create or replace function public.create_charge(
   p_amount_cents bigint,
   p_description text default null,
@@ -35,6 +34,7 @@ begin
   order by k.created_at limit 1;
   if v_key is null then raise exception 'cadastre uma chave pix antes de cobrar'; end if;
 
+  -- 25 caracteres hexadecimais: cabe no QR Code e tem colisão desprezível
   v_txid := left(replace(gen_random_uuid()::text, '-', ''), 25);
   v_exp := now() + make_interval(mins => p_expires_minutes);
 
