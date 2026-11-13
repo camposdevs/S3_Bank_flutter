@@ -7,6 +7,7 @@ import '../../core/statement_filter.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/wallet_provider.dart';
 import '../../widgets/transaction_tile.dart';
+import '../transfers/transfers_screen.dart';
 import 'transaction_detail_screen.dart';
 
 /// Extrato da conta: filtros de entrada/saída e período, gráfico de saídas
@@ -42,7 +43,18 @@ class _StatementScreenState extends State<StatementScreen> {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Extrato')),
+      appBar: AppBar(
+        title: const Text('Extrato'),
+        actions: [
+          IconButton(
+            tooltip: 'Transferências e boletos',
+            icon: const Icon(Icons.swap_horiz),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const TransfersScreen()),
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),

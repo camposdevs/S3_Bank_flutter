@@ -195,6 +195,59 @@ class LedgerRepository {
         });
       });
 
+  // ------------------------------------------------------------ saídas e boletos
+
+  /// Limite diário e quanto já foi usado hoje (fuso de São Paulo).
+  Future<({int limitCents, int usedCents})> fetchMoneyOutSummary() => _run(() async {
+        final rows = (await _client.rpc('get_money_out_summary')) as List;
+        final row = Map<String, dynamic>.from(rows.first as Map);
+        return (
+          limitCents: (row['limit_cents'] as num).toInt(),
+          usedCents: (row['used_cents'] as num).toInt(),
+        );
+      });
+
+  Future<void> withdrawToBank({
+    required int amountCents,
+    required String bank,
+    String? accountInfo,
+  }) =>
+      _run(() async {
+        await _client.rpc('withdraw_to_bank', params: {
+          'p_amount_cents': amountCents,
+          'p_bank': bank,
+          'p_account_info': accountInfo,
+        });
+      });
+
+  Future<({String code, DateTime due})> createBoleto({
+    required int amountCents,
+    String? description,
+    int dueDays = 3,
+  }) =>
+      _run(() async {
+        final rows = (await _client.rpc('create_boleto', params: {
+          'p_amount_cents': amountCents,
+          'p_description': description,
+          'p_due_days': dueDays,
+        })) as List;
+        final row = Map<String, dynamic>.from(rows.first as Map);
+        return (
+          code: row['boleto_code'] as String,
+          due: DateTime.parse(row['boleto_due'] as String),
+        );
+      });
+
+  Future<Map<String, dynamic>> getBoleto(String code) => _run(() async {
+        final rows = (await _client.rpc('get_boleto', params: {'p_code': code})) as List;
+        return Map<String, dynamic>.from(rows.first as Map);
+      });
+
+  Future<int> payBoleto(String code) => _run(() async {
+        final result = await _client.rpc('pay_boleto', params: {'p_code': code});
+        return (result as num).toInt();
+      });
+
   // ------------------------------------------------------------ mapeamento
 
   /// Converte uma linha de `ledger_entries` no modelo que as telas usam.
@@ -225,7 +278,13 @@ class LedgerRepository {
         title = 'Transferência enviada';
       case 'withdrawal':
         type = TransactionType.pixSent;
-        title = 'Saque';
+        title = 'Transferência para outro banco';
+      case 'boleto_out':
+        type = TransactionType.pixSent;
+        title = 'Boleto pago';
+      case 'boleto_in':
+        type = TransactionType.pixReceived;
+        title = 'Boleto recebido';
       case 'fee':
         type = TransactionType.pixSent;
         title = 'Tarifa';
@@ -291,6 +350,16 @@ class LedgerRepository {
     if (m.contains('cobrança não encontrada')) return 'Cobrança não encontrada';
     if (m.contains('própria cobrança')) return 'Você não pode pagar a sua própria cobrança';
     if (m.contains('cadastre uma chave pix')) return 'Cadastre uma chave Pix antes de cobrar';
+    if (m.contains('limite diário de saídas atingido')) {
+      return r'Você atingiu o limite diário de saídas (R$ 5.000,00)';
+    }
+    if (m.contains('boleto não encontrado')) return 'Boleto não encontrado';
+    if (m.contains('boleto já foi pago')) return 'Este boleto já foi pago';
+    if (m.contains('boleto vencido')) return 'Este boleto está vencido';
+    if (m.contains('boleto indisponível')) return 'Boleto indisponível';
+    if (m.contains('próprio boleto')) return 'Você não pode pagar o seu próprio boleto';
+    if (m.contains('informe o banco de destino')) return 'Informe o banco de destino';
+    if (m.contains('prazo inválido')) return 'Prazo inválido';
     if (m.contains('could not find the function') || m.contains('schema cache')) {
       return 'Banco desatualizado: execute a migração 0003 no Supabase';
     }

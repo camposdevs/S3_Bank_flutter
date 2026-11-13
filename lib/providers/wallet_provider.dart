@@ -97,6 +97,66 @@ class WalletProvider extends ChangeNotifier {
     }
   }
 
+  /// Transferência para outro banco (simulada). Retorna null ou o erro.
+  Future<String?> withdrawToBank(
+    double amount, {
+    required String bank,
+    String? accountInfo,
+  }) async {
+    final ledger = _ledger;
+    if (ledger == null) return 'Disponível só com conexão com o banco';
+    final cents = (_round2(amount) * 100).round();
+    if (cents <= 0) return 'Valor inválido';
+    try {
+      await ledger.withdrawToBank(amountCents: cents, bank: bank, accountInfo: accountInfo);
+      await refreshFromServer();
+      return null;
+    } on LedgerException catch (e) {
+      return e.message;
+    }
+  }
+
+  Future<({int limitCents, int usedCents})> moneyOutSummary() {
+    final ledger = _ledger;
+    if (ledger == null) {
+      throw const LedgerException('Disponível só com conexão com o banco');
+    }
+    return ledger.fetchMoneyOutSummary();
+  }
+
+  /// Emite um boleto para receber. Lança LedgerException se falhar.
+  Future<({String code, DateTime due})> createBoleto(double amount, {String? description}) {
+    final ledger = _ledger;
+    if (ledger == null) {
+      throw const LedgerException('Disponível só com conexão com o banco');
+    }
+    return ledger.createBoleto(
+      amountCents: (_round2(amount) * 100).round(),
+      description: description,
+    );
+  }
+
+  Future<Map<String, dynamic>> getBoleto(String code) {
+    final ledger = _ledger;
+    if (ledger == null) {
+      throw const LedgerException('Disponível só com conexão com o banco');
+    }
+    return ledger.getBoleto(code);
+  }
+
+  /// Paga um boleto. Retorna null em sucesso ou o erro.
+  Future<String?> payBoleto(String code) async {
+    final ledger = _ledger;
+    if (ledger == null) return 'Disponível só com conexão com o banco';
+    try {
+      await ledger.payBoleto(code);
+      await refreshFromServer();
+      return null;
+    } on LedgerException catch (e) {
+      return e.message;
+    }
+  }
+
   /// Marca a categoria de uma saída. No modo banco, grava no servidor.
   /// Retorna null em sucesso ou a mensagem de erro.
   Future<String?> setCategory(String transactionId, String category) async {

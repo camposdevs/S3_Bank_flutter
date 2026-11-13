@@ -844,5 +844,131 @@ void main() {
         )),
       );
     });
+
+    // ------------------------------------------------------------ saídas e boletos
+
+    test('saída: transferência para outro banco debita a conta', () async {
+      final a = await _signUpUser('wdA');
+      final accA = await _myAccountId(a.client, a.uid);
+      await a.client.rpc('simulate_deposit', params: {
+        'p_amount_cents': 10000,
+        'p_description': 'saldo',
+      });
+
+      await a.client.rpc('withdraw_to_bank', params: {
+        'p_amount_cents': 3000,
+        'p_bank': 'Banco Teste',
+        'p_account_info': 'Ag 0001 · CC 12345-6',
+      });
+      expect(await _balanceCents(a.client, accA), 7000);
+
+      final saida = await a.client
+          .from('ledger_entries')
+          .select('kind, description')
+          .eq('kind', 'withdrawal')
+          .single();
+      expect((saida['description'] as String).contains('Banco Teste'), isTrue);
+    });
+
+    test('saída: limite diário de R\$ 5.000 é aplicado pelo banco', () async {
+      final a = await _signUpUser('limA');
+      await a.client.rpc('simulate_deposit', params: {
+        'p_amount_cents': 1000000,
+        'p_description': 'saldo',
+      });
+      await a.client.rpc('withdraw_to_bank', params: {
+        'p_amount_cents': 300000,
+        'p_bank': 'Banco Teste',
+      });
+
+      await expectLater(
+        Future(() async => a.client.rpc('withdraw_to_bank', params: {
+              'p_amount_cents': 300000,
+              'p_bank': 'Banco Teste',
+            })),
+        throwsA(isA<PostgrestException>().having(
+          (e) => e.message,
+          'message',
+          contains('limite diário de saídas atingido'),
+        )),
+      );
+
+      final resumo = (await a.client.rpc('get_money_out_summary')) as List;
+      expect((resumo.first['used_cents'] as num).toInt(), 300000);
+      expect((resumo.first['limit_cents'] as num).toInt(), 500000);
+    });
+
+    test('boleto: emitido por um, pago por outro, e não pode ser pago de novo', () async {
+      final rec = await _signUpUser('bolRec');
+      final pag = await _signUpUser('bolPag');
+      final accRec = await _myAccountId(rec.client, rec.uid);
+      final accPag = await _myAccountId(pag.client, pag.uid);
+      await pag.client.rpc('simulate_deposit', params: {
+        'p_amount_cents': 10000,
+        'p_description': 'saldo',
+      });
+
+      final created = (await rec.client.rpc('create_boleto', params: {
+        'p_amount_cents': 2500,
+        'p_description': 'serviço',
+        'p_due_days': 3,
+      })) as List;
+      final code = created.first['boleto_code'] as String;
+      expect(code.length, 47);
+
+      final info = (await pag.client.rpc('get_boleto', params: {'p_code': code})) as List;
+      expect((info.first['boleto_amount_cents'] as num).toInt(), 2500);
+      expect(info.first['boleto_status'], 'open');
+
+      await pag.client.rpc('pay_boleto', params: {'p_code': code});
+      expect(await _balanceCents(pag.client, accPag), 7500);
+      expect(await _balanceCents(rec.client, accRec), 2500);
+
+      await expectLater(
+        Future(() async => pag.client.rpc('pay_boleto', params: {'p_code': code})),
+        throwsA(isA<PostgrestException>().having(
+          (e) => e.message,
+          'message',
+          contains('boleto já foi pago'),
+        )),
+      );
+    });
+
+    test('boleto: não pode pagar o próprio boleto', () async {
+      final a = await _signUpUser('bolSelf');
+      await a.client.rpc('simulate_deposit', params: {
+        'p_amount_cents': 10000,
+        'p_description': 'saldo',
+      });
+      final created = (await a.client.rpc('create_boleto', params: {
+        'p_amount_cents': 1000,
+        'p_description': 'teste',
+        'p_due_days': 3,
+      })) as List;
+      final code = created.first['boleto_code'] as String;
+
+      await expectLater(
+        Future(() async => a.client.rpc('pay_boleto', params: {'p_code': code})),
+        throwsA(isA<PostgrestException>().having(
+          (e) => e.message,
+          'message',
+          contains('próprio boleto'),
+        )),
+      );
+    });
+
+    test('boleto: código inexistente é recusado', () async {
+      final a = await _signUpUser('bolNone');
+      await expectLater(
+        Future(() async => a.client.rpc('get_boleto', params: {
+              'p_code': '00000000000000000000000000000000000000000000000',
+            })),
+        throwsA(isA<PostgrestException>().having(
+          (e) => e.message,
+          'message',
+          contains('boleto não encontrado'),
+        )),
+      );
+    });
   }, skip: skip);
 }
