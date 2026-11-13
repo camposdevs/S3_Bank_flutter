@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+
+import '../../core/pix_payload_parser.dart';
+import 'qr_scanner_screen.dart';
 import '../../animations/animations.dart';
 import '../../core/pix_payload_generator.dart';
 import '../../core/theme/app_colors.dart';
@@ -71,7 +74,7 @@ class PixScreen extends StatelessWidget {
                   icon: Icons.qr_code_scanner,
                   title: 'QR Code',
                   subtitle: 'Escanear para pagar',
-                  onTap: () => _showPayModal(context, prefillQr: true),
+                  onTap: () => _scanQr(context),
                 ),
               ],
             ),
@@ -97,12 +100,33 @@ class PixScreen extends StatelessWidget {
     );
   }
 
-  void _showPayModal(BuildContext context, {bool prefillQr = false}) {
-    final wallet = context.read<WalletProvider>();
-    final recipientController = TextEditingController(
-      text: prefillQr ? 'QR Code • Loja Exemplo' : '',
+  /// Abre a câmera, lê o QR Code do Pix e abre o pagamento já preenchido.
+  Future<void> _scanQr(BuildContext context) async {
+    final raw = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const QrScannerScreen()),
     );
-    final amountController = TextEditingController();
+    if (raw == null || !context.mounted) return;
+
+    final parsed = PixPayloadParser.tryParse(raw);
+    if (parsed == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Este QR Code não é um Pix válido.')),
+      );
+      return;
+    }
+    _showPayModal(context, prefill: parsed);
+  }
+
+  /// Valor no formato do campo (ex.: 25,50).
+  static String _amountField(double value) =>
+      value.toStringAsFixed(2).replaceAll('.', ',');
+
+  void _showPayModal(BuildContext context, {PixPayload? prefill}) {
+    final wallet = context.read<WalletProvider>();
+    final recipientController = TextEditingController(text: prefill?.key ?? '');
+    final amountController = TextEditingController(
+      text: prefill?.amount != null ? _amountField(prefill!.amount!) : '',
+    );
     final formKey = GlobalKey<FormState>();
 
     showModalBottomSheet(
@@ -133,6 +157,7 @@ class PixScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: recipientController,
+                    readOnly: prefill != null,
                     decoration: const InputDecoration(
                       labelText: 'Chave Pix, e-mail ou "Copia e Cola"',
                     ),
@@ -142,6 +167,7 @@ class PixScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: amountController,
+                    readOnly: prefill?.amount != null,
                     keyboardType: TextInputType.number,
                     inputFormatters: [CurrencyInputFormatter(maxDigits: 12)],
                     decoration: const InputDecoration(
@@ -161,8 +187,11 @@ class PixScreen extends StatelessWidget {
                     label: 'Confirmar pagamento',
                     onTap: () async {
                       if (!formKey.currentState!.validate()) return;
-                      final amount = _parseAmount(amountController.text)!;
-                      final recipient = recipientController.text.trim();
+                      // Aceita chave, e-mail ou o "Copia e Cola" inteiro do QR.
+                      final typed = recipientController.text.trim();
+                      final parsed = PixPayloadParser.tryParse(typed);
+                      final recipient = parsed?.key ?? typed;
+                      final amount = parsed?.amount ?? _parseAmount(amountController.text)!;
                       final error = await wallet.payPix(amount, recipient: recipient);
                       if (!ctx.mounted || !context.mounted) return;
                       Navigator.of(ctx).pop();

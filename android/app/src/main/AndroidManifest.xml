@@ -1,4 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.CAMERA" />
     <!-- google_fonts baixa a fonte Inter pela internet; sem isto o APK release
          (sem o manifest de debug) não teria acesso à rede. -->
     <uses-permission android:name="android.permission.INTERNET"/>
