@@ -96,6 +96,7 @@ class AccountDataCoordinator with WidgetsBindingObserver {
       wallet.clearSession();
       savings.clearSession();
       pixKeys.clearSession();
+      user.clearSession();
       return;
     }
     _load(account);
@@ -104,6 +105,7 @@ class AccountDataCoordinator with WidgetsBindingObserver {
     wallet.refreshFromServer();
     savings.refreshFromServer();
     pixKeys.refreshFromServer();
+    user.refreshFromServer();
   }
 
   void _load(Account account) {

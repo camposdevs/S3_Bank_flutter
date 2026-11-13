@@ -371,11 +371,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           AuthTextField(
             controller: _passwordController,
             label: 'Nova senha',
+            keyboardType: TextInputType.number,
+            inputFormatters: AuthProvider.passwordFormatters,
             icon: Icons.lock_outline,
             obscureText: _obscurePassword,
             textInputAction: TextInputAction.next,
-            validator: (v) =>
-                (v == null || v.length < 4) ? 'Mínimo de 4 caracteres' : null,
+            validator: AuthProvider.passwordError,
             suffixIcon: IconButton(
               icon: Icon(
                 _obscurePassword
@@ -392,6 +393,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           AuthTextField(
             controller: _confirmController,
             label: 'Confirmar nova senha',
+            keyboardType: TextInputType.number,
+            inputFormatters: AuthProvider.passwordFormatters,
             icon: Icons.lock_outline,
             obscureText: _obscurePassword,
             textInputAction: TextInputAction.done,

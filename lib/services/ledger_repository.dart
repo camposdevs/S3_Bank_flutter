@@ -122,6 +122,15 @@ class LedgerRepository {
         await _client.from('pix_keys').delete().eq('id', id);
       });
 
+  /// Progresso de gamificação da conta (nível, pontos, constância), ou null.
+  Future<Map<String, dynamic>?> fetchProgress() => _run(() async {
+        final row = await _client
+            .from('user_progress')
+            .select('tier, points, streak_months')
+            .maybeSingle();
+        return row == null ? null : Map<String, dynamic>.from(row);
+      });
+
   // ------------------------------------------------------------ mapeamento
 
   /// Converte uma linha de `ledger_entries` no modelo que as telas usam.

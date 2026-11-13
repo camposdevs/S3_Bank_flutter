@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Conta do usuário logado. O [id] é o UUID do Supabase Auth, que é a
@@ -56,6 +57,23 @@ class AuthProvider extends ChangeNotifier {
   static final _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
   static bool isValidEmail(String raw) => _emailRegex.hasMatch(raw.trim());
+
+  /// Senha: exatamente 6 números (como no app dos bancos). Sem letras.
+  static final _pinRegex = RegExp(r'^\d{6}$');
+
+  static const passwordMessage = 'A senha precisa ter 6 números';
+
+  static bool isValidPassword(String raw) => _pinRegex.hasMatch(raw);
+
+  /// Validador de formulário para criar ou trocar a senha.
+  static String? passwordError(String? raw) =>
+      isValidPassword(raw ?? '') ? null : passwordMessage;
+
+  /// Só aceita dígitos, no máximo 6, para o teclado da senha.
+  static List<TextInputFormatter> get passwordFormatters => [
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(6),
+      ];
 
   static String normalizeEmail(String raw) => raw.trim().toLowerCase();
 
@@ -122,7 +140,7 @@ class AuthProvider extends ChangeNotifier {
     final email = normalizeEmail(identifier);
     if (email.isEmpty) return 'Informe seu e-mail';
     if (!isValidEmail(email)) return 'Informe um e-mail válido';
-    if (password.length < 6) return 'A senha precisa ter pelo menos 6 caracteres';
+    if (password.isEmpty) return 'Informe sua senha';
 
     try {
       await _auth.signInWithPassword(email: email, password: password);
@@ -144,7 +162,7 @@ class AuthProvider extends ChangeNotifier {
     if (name.trim().length < 2) return 'Informe seu nome completo';
     final email = normalizeEmail(identifier);
     if (!isValidEmail(email)) return 'Informe um e-mail válido';
-    if (password.length < 6) return 'A senha precisa ter pelo menos 6 caracteres';
+    if (!isValidPassword(password)) return passwordMessage;
 
     try {
       final res = await _auth.signUp(
@@ -226,7 +244,7 @@ class AuthProvider extends ChangeNotifier {
     if (!_resetVerified || _auth.currentSession == null) {
       return 'A recuperação expirou. Comece de novo.';
     }
-    if (newPassword.length < 6) return 'A senha precisa ter pelo menos 6 caracteres';
+    if (!isValidPassword(newPassword)) return passwordMessage;
 
     try {
       await _auth.updateUser(UserAttributes(password: newPassword));

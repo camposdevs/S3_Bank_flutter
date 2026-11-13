@@ -22,4 +22,27 @@ void main() {
     });
   });
 
+
+  group('senha de 6 números', () {
+    test('aceita exatamente 6 dígitos', () {
+      expect(AuthProvider.isValidPassword('123456'), isTrue);
+      expect(AuthProvider.isValidPassword('000000'), isTrue);
+    });
+
+    test('recusa letras, símbolos, espaços e tamanho diferente de 6', () {
+      expect(AuthProvider.isValidPassword('12345'), isFalse);
+      expect(AuthProvider.isValidPassword('1234567'), isFalse);
+      expect(AuthProvider.isValidPassword('12345a'), isFalse);
+      expect(AuthProvider.isValidPassword('abcdef'), isFalse);
+      expect(AuthProvider.isValidPassword('123 56'), isFalse);
+      expect(AuthProvider.isValidPassword('12345!'), isFalse);
+      expect(AuthProvider.isValidPassword(''), isFalse);
+    });
+
+    test('passwordError devolve a mensagem certa', () {
+      expect(AuthProvider.passwordError('123456'), isNull);
+      expect(AuthProvider.passwordError('12ab56'), AuthProvider.passwordMessage);
+      expect(AuthProvider.passwordError(null), AuthProvider.passwordMessage);
+    });
+  });
 }

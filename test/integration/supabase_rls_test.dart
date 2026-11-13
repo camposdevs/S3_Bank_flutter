@@ -37,7 +37,7 @@ Future<({SupabaseClient client, String uid, String email})> _signUpUser(
   final email = 'teste.$label.$stamp@example.com';
   final res = await client.auth.signUp(
     email: email,
-    password: 'senha-teste-123',
+    password: '123456',
     data: {'full_name': 'Usuário $label', 'cpf': ''},
   );
   if (res.session == null) {
@@ -404,6 +404,134 @@ void main() {
           contains('chave já em uso'),
         )),
       );
+    });
+
+    // ------------------------------------------------------------ gamificação
+
+    test('gamificação: aporte em caixinha gera pontos no servidor', () async {
+      final a = await _signUpUser('gamif');
+      final accId = await _myAccountId(a.client, a.uid);
+      await a.client.rpc('simulate_deposit', params: {
+        'p_amount_cents': 10000,
+        'p_description': 'saldo',
+      });
+      await a.client.rpc('create_savings_goal', params: {
+        'p_name': 'Reserva',
+        'p_target_cents': 50000,
+      });
+      final goalId = await _onlyGoalId(a.client);
+      await a.client.rpc('savings_move', params: {
+        'p_goal_id': goalId,
+        'p_amount_cents': 10000,
+        'p_direction': 'in',
+      });
+
+      // R$ 100 -> 15 + 100/10 = 25 pontos, primeiro mês (sem bônus).
+      final row = await a.client
+          .from('user_progress')
+          .select('tier, points, streak_months')
+          .eq('account_id', accId)
+          .single();
+      expect(row['tier'], 'bronze');
+      expect((row['points'] as num).toInt(), 25);
+      expect((row['streak_months'] as num).toInt(), 1);
+    });
+
+    test('gamificação: resgatar não gera pontos', () async {
+      final a = await _signUpUser('gamifResgate');
+      final accId = await _myAccountId(a.client, a.uid);
+      await a.client.rpc('simulate_deposit', params: {
+        'p_amount_cents': 10000,
+        'p_description': 'saldo',
+      });
+      await a.client.rpc('create_savings_goal', params: {
+        'p_name': 'Reserva',
+        'p_target_cents': 50000,
+      });
+      final goalId = await _onlyGoalId(a.client);
+      await a.client.rpc('savings_move', params: {
+        'p_goal_id': goalId,
+        'p_amount_cents': 10000,
+        'p_direction': 'in',
+      });
+      final antes = await a.client
+          .from('user_progress')
+          .select('points')
+          .eq('account_id', accId)
+          .single();
+
+      await a.client.rpc('savings_move', params: {
+        'p_goal_id': goalId,
+        'p_amount_cents': 5000,
+        'p_direction': 'out',
+      });
+      final depois = await a.client
+          .from('user_progress')
+          .select('points')
+          .eq('account_id', accId)
+          .single();
+      expect(depois['points'], antes['points']);
+    });
+
+    test('gamificação: progresso de outro usuário não é visível', () async {
+      final a = await _signUpUser('gamifA');
+      final b = await _signUpUser('gamifB');
+      final accA = await _myAccountId(a.client, a.uid);
+      await a.client.rpc('simulate_deposit', params: {
+        'p_amount_cents': 10000,
+        'p_description': 'saldo',
+      });
+      await a.client.rpc('create_savings_goal', params: {
+        'p_name': 'Reserva',
+        'p_target_cents': 50000,
+      });
+      final goalId = await _onlyGoalId(a.client);
+      await a.client.rpc('savings_move', params: {
+        'p_goal_id': goalId,
+        'p_amount_cents': 10000,
+        'p_direction': 'in',
+      });
+      expect(await a.client.from('user_progress').select().eq('account_id', accA), isNotEmpty);
+
+      final visivel = await b.client.from('user_progress').select().eq('account_id', accA);
+      expect(visivel, isEmpty);
+    });
+
+    test('gamificação: usuário não consegue alterar os próprios pontos', () async {
+      final a = await _signUpUser('gamifEdit');
+      final accId = await _myAccountId(a.client, a.uid);
+      await a.client.rpc('simulate_deposit', params: {
+        'p_amount_cents': 1000,
+        'p_description': 'saldo',
+      });
+      await a.client.rpc('create_savings_goal', params: {
+        'p_name': 'Reserva',
+        'p_target_cents': 50000,
+      });
+      final goalId = await _onlyGoalId(a.client);
+      await a.client.rpc('savings_move', params: {
+        'p_goal_id': goalId,
+        'p_amount_cents': 1000,
+        'p_direction': 'in',
+      });
+
+      try {
+        final changed = await a.client
+            .from('user_progress')
+            .update({'points': 999999})
+            .eq('account_id', accId)
+            .select();
+        expect(changed, isEmpty);
+      } on PostgrestException {
+        // recusado pelo banco: também é o comportamento esperado
+      }
+      final row = await a.client
+          .from('user_progress')
+          .select('points')
+          .eq('account_id', accId)
+          .single();
+      // R$ 10 -> 15 + 10/10 = 16 pontos; o valor real continua o do servidor.
+      expect((row['points'] as num).toInt(), 16);
     });
   }, skip: skip);
 }

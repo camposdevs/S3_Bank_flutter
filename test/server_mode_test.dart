@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:s3_bank/providers/pix_keys_provider.dart';
 import 'package:s3_bank/providers/savings_provider.dart';
+import 'package:s3_bank/providers/user_provider.dart';
 import 'package:s3_bank/providers/wallet_provider.dart';
 import 'package:s3_bank/services/ledger_repository.dart';
 
@@ -28,6 +29,16 @@ void main() {
     expect(keys.isServerBacked, isTrue);
     expect(keys.keys, isEmpty);
     expect(keys.validateInput(PixKeyType.email, 'rafaela@email.com'), isNull);
+  });
+
+  test('modo banco: o aparelho não soma pontos de constância', () {
+    final user = UserProvider(initialPoints: 0);
+    user.attachLedger(LedgerRepository());
+
+    user.registerDeposit(100);
+
+    expect(user.isServerBacked, isTrue);
+    expect(user.consistencyPoints, 0);
   });
 
   test('modo banco: não há caixinhas de exemplo', () {

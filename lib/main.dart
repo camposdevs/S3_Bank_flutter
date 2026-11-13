@@ -30,7 +30,7 @@ Future<void> main() async {
   final store = await LocalStore.create();
 
   final auth = AuthProvider();
-  final user = UserProvider();
+  final user = UserProvider()..attachLedger(LedgerRepository());
   final wallet = WalletProvider()..attachLedger(LedgerRepository());
   final savings = SavingsProvider()..attachLedger(LedgerRepository());
   final pixKeys = PixKeysProvider()..attachLedger(LedgerRepository());

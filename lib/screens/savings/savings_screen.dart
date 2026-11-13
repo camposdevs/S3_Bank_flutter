@@ -322,6 +322,7 @@ class _GoalCard extends StatelessWidget {
         return;
       }
       await wallet.refreshFromServer();
+      await user.refreshFromServer();
     } else {
       final debited = wallet.debitForSavings(amount, goalName: goal.name);
       if (!debited) {

@@ -161,11 +161,12 @@ class _SignupScreenState extends State<SignupScreen> {
           AuthTextField(
             controller: _passwordController,
             label: 'Senha',
+            keyboardType: TextInputType.number,
+            inputFormatters: AuthProvider.passwordFormatters,
             icon: Icons.lock_outline,
             obscureText: _obscurePassword,
             textInputAction: TextInputAction.next,
-            validator: (v) =>
-                (v == null || v.length < 4) ? 'Mínimo de 4 caracteres' : null,
+            validator: AuthProvider.passwordError,
             suffixIcon: IconButton(
               icon: Icon(
                 _obscurePassword
@@ -182,6 +183,8 @@ class _SignupScreenState extends State<SignupScreen> {
           AuthTextField(
             controller: _confirmController,
             label: 'Confirmar senha',
+            keyboardType: TextInputType.number,
+            inputFormatters: AuthProvider.passwordFormatters,
             icon: Icons.lock_outline,
             obscureText: _obscurePassword,
             textInputAction: TextInputAction.done,
