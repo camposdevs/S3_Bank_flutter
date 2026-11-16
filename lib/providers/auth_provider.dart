@@ -242,6 +242,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   void signOut() {
+    debugPrint('[auth] logout pedido pelo usuário');
     // Zera a conta já, para o coordenador salvar os dados desta conta.
     _account = null;
     notifyListeners();

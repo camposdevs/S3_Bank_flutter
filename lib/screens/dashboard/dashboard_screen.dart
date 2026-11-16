@@ -261,14 +261,6 @@ class _Header extends StatelessWidget {
           ),
         ),
         TierBadge(tier: tier, large: true),
-        const SizedBox(width: 4),
-        Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.logout, color: AppColors.textSecondary, size: 20),
-            tooltip: 'Sair',
-            onPressed: () => context.read<AuthProvider>().signOut(),
-          ),
-        ),
       ],
     );
   }

@@ -143,7 +143,27 @@ class ProfileScreen extends StatelessWidget {
 
   /// Esta tela é aberta por cima do app (push). Sem fechar ela antes, depois
   /// do logout o usuário continuava vendo o perfil em vez do login.
-  void _signOut(BuildContext context) {
+  Future<void> _signOut(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sair da conta?'),
+        content: const Text(
+          'Para entrar de novo, você vai precisar digitar sua senha.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Sair'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
     final auth = context.read<AuthProvider>();
     Navigator.of(context).popUntil((route) => route.isFirst);
     auth.signOut();
