@@ -29,17 +29,27 @@ class SecurityLockController extends ChangeNotifier with WidgetsBindingObserver 
   bool _locked = false;
   bool _obscured = false;
   bool _authenticating = false;
+  bool _attached = false;
   DateTime? _backgroundedAt;
 
   bool get isLocked => _locked;
   bool get isObscured => _obscured;
 
   /// Começa a observar o ciclo de vida do app. Chame uma vez no main().
-  void attach() => WidgetsBinding.instance.addObserver(this);
+  void attach() {
+    if (_attached) return;
+    _attached = true;
+    WidgetsBinding.instance.addObserver(this);
+  }
 
+  /// Só mexe no observador se ele foi adicionado. Sem isso, dispose() sem
+  /// attach() (como nos testes) estoura, porque o binding não existe.
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
+    if (_attached) {
+      WidgetsBinding.instance.removeObserver(this);
+      _attached = false;
+    }
     super.dispose();
   }
 

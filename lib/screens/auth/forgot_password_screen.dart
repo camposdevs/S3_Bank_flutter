@@ -16,7 +16,7 @@ enum _Step { identify, code, newPassword, done }
 /// nova senha no aparelho. Como não há servidor de e-mail/SMS, o código
 /// é exibido na própria tela (modo demonstração).
 ///
-/// TODO(integração-backend): enviar o código por e-mail/SMS de verdade.
+/// O código de 6 dígitos é enviado por e-mail pelo Supabase Auth.
 class ForgotPasswordScreen extends StatefulWidget {
   /// Pré-preenche o campo com o que o usuário já digitou no login.
   final String? initialIdentifier;

@@ -43,7 +43,7 @@ Future<void> main() async {
   final savings = SavingsProvider()..attachLedger(LedgerRepository());
   final pixKeys = PixKeysProvider()..attachLedger(LedgerRepository());
   final card = CardProvider(
-    holderName: 'Rafaela Souza', // TODO: trocar pelo nome do perfil logado
+    holderName: 'Cliente', // o nome real é colocado ao entrar na conta
     initialTier: UserTier.bronze,
   );
 
