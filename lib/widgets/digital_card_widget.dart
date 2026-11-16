@@ -123,7 +123,7 @@ class DigitalCardWidget extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Text(
-                showDetails ? '${card.expiry}  •  CVV ${card.cvv}' : card.expiry,
+                showDetails ? '${card.expiry}  •  CVV ${card.cvv}' : '••/••',
                 style: const TextStyle(color: Colors.white, fontSize: 13),
               ),
             ],

@@ -9,12 +9,16 @@ import '../../models/card_summary.dart';
 import '../../providers/credit_card_provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../services/ledger_repository.dart';
+import '../../widgets/app_card.dart';
 import '../../widgets/state_view.dart';
 
 /// Seção de crédito dentro de "Meus cartões". Usa o CreditCardProvider
 /// que a tela de cartões já fornece na árvore.
 class CreditCardSection extends StatelessWidget {
-  const CreditCardSection({super.key});
+  /// false = dados ocultos (padrão, como nos bancos).
+  final bool revealed;
+
+  const CreditCardSection({super.key, this.revealed = false});
 
   @override
   Widget build(BuildContext context) {
@@ -29,17 +33,20 @@ class CreditCardSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _CreditVisual(summary: s),
+        _CreditVisual(summary: s, revealed: revealed),
         const SizedBox(height: 14),
-        _LimitCard(summary: s),
+        _LimitCard(summary: s, revealed: revealed),
         const SizedBox(height: 14),
-        _InvoiceCard(summary: s),
+        _InvoiceCard(summary: s, revealed: revealed),
         const SizedBox(height: 26),
-        _PurchasesSection(purchases: cc.purchases, canBuy: s.hasCard),
+        _PurchasesSection(purchases: cc.purchases, canBuy: s.hasCard, revealed: revealed),
       ],
     );
   }
 }
+
+/// Valor em reais, ou bolinhas quando os dados estão ocultos.
+String _money(double value, bool revealed) => revealed ? brl(value) : 'R\$ ••••';
 
 String _dateBr(DateTime d) =>
     '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
@@ -56,20 +63,14 @@ class _Panel extends StatelessWidget {
   const _Panel({required this.child});
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: child,
-      );
+  Widget build(BuildContext context) => AppCard(child: child);
 }
 
 class _LimitCard extends StatelessWidget {
   final CardSummary summary;
+  final bool revealed;
 
-  const _LimitCard({required this.summary});
+  const _LimitCard({required this.summary, required this.revealed});
 
   @override
   Widget build(BuildContext context) {
@@ -84,14 +85,14 @@ class _LimitCard extends StatelessWidget {
               style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
           const SizedBox(height: 4),
           Text(
-            brl(summary.availableCents / 100),
+            _money(summary.availableCents / 100, revealed),
             style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
           LinearProgressIndicator(value: ratio, minHeight: 8),
           const SizedBox(height: 6),
           Text(
-            'Usado ${brl(summary.usedCents / 100)} de ${brl(summary.limitCents / 100)}',
+            'Usado ${_money(summary.usedCents / 100, revealed)} de ${_money(summary.limitCents / 100, revealed)}',
             style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
           ),
         ],
@@ -102,8 +103,9 @@ class _LimitCard extends StatelessWidget {
 
 class _InvoiceCard extends StatelessWidget {
   final CardSummary summary;
+  final bool revealed;
 
-  const _InvoiceCard({required this.summary});
+  const _InvoiceCard({required this.summary, required this.revealed});
 
   Future<void> _pay(BuildContext context) async {
     final cc = context.read<CreditCardProvider>();
@@ -149,7 +151,7 @@ class _InvoiceCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            brl(summary.invoiceTotalCents / 100),
+            _money(summary.invoiceTotalCents / 100, revealed),
             style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 4),
@@ -177,7 +179,9 @@ class _InvoiceCard extends StatelessWidget {
 class _CreditVisual extends StatelessWidget {
   final CardSummary summary;
 
-  const _CreditVisual({required this.summary});
+  final bool revealed;
+
+  const _CreditVisual({required this.summary, required this.revealed});
 
   static const _gradient = LinearGradient(
     begin: Alignment.topLeft,
@@ -288,7 +292,7 @@ class _CreditVisual extends StatelessWidget {
                     const Text('Disponível',
                         style: TextStyle(color: Colors.white70, fontSize: 11)),
                     Text(
-                      brl(summary.availableCents / 100),
+                      _money(summary.availableCents / 100, revealed),
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ],
@@ -299,7 +303,7 @@ class _CreditVisual extends StatelessWidget {
                 children: [
                   const Text('Validade', style: TextStyle(color: Colors.white70, fontSize: 11)),
                   Text(
-                    summary.expiry ?? '--/--',
+                    revealed ? (summary.expiry ?? '--/--') : '••/••',
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ],
@@ -332,7 +336,13 @@ class _PurchasesSection extends StatelessWidget {
   final List<CardPurchase> purchases;
   final bool canBuy;
 
-  const _PurchasesSection({required this.purchases, required this.canBuy});
+  final bool revealed;
+
+  const _PurchasesSection({
+    required this.purchases,
+    required this.canBuy,
+    required this.revealed,
+  });
 
   Future<void> _newPurchase(BuildContext context) async {
     final cc = context.read<CreditCardProvider>();
@@ -433,7 +443,7 @@ class _PurchasesSection extends StatelessWidget {
             message: 'As compras aparecem aqui e entram na fatura do mês.',
           )
         else
-          for (final p in purchases) _PurchaseTile(purchase: p),
+          for (final p in purchases) _PurchaseTile(purchase: p, revealed: revealed),
       ],
     );
   }
@@ -441,8 +451,9 @@ class _PurchasesSection extends StatelessWidget {
 
 class _PurchaseTile extends StatelessWidget {
   final CardPurchase purchase;
+  final bool revealed;
 
-  const _PurchaseTile({required this.purchase});
+  const _PurchaseTile({required this.purchase, required this.revealed});
 
   @override
   Widget build(BuildContext context) {
@@ -474,7 +485,7 @@ class _PurchaseTile extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(brl(purchase.amountCents / 100),
+              Text(_money(purchase.amountCents / 100, revealed),
                   style: const TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 2),
               Text(

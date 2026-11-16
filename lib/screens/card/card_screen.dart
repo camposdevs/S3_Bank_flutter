@@ -100,7 +100,7 @@ class _CardsViewState extends State<_CardsView> {
                       const Divider(height: 1, color: AppColors.border),
                       _CopyRow(
                         label: 'Validade',
-                        value: card.expiry,
+                        value: _showDetails ? card.expiry : '••/••',
                         onCopy: () => _copy(context, card.expiry, 'Validade'),
                       ),
                       const Divider(height: 1, color: AppColors.border),
@@ -116,7 +116,7 @@ class _CardsViewState extends State<_CardsView> {
               const SizedBox(height: 30),
               const _SectionLabel('Crédito'),
               const SizedBox(height: 10),
-              const CreditCardSection(),
+              CreditCardSection(revealed: _showDetails),
             ],
           ),
         ),
