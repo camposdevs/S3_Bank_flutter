@@ -7,6 +7,8 @@ import '../../core/format.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/wallet_provider.dart';
 import '../../services/ledger_repository.dart';
+import '../../widgets/pressable_scale.dart';
+import '../../widgets/state_view.dart';
 
 /// Saídas e boletos: transferência para outro banco, boleto para receber,
 /// pagamento de boleto, e o limite diário.
@@ -295,7 +297,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
 
   Widget _limitCard() {
     if (_summaryError != null) {
-      return Text(_summaryError!, style: const TextStyle(color: AppColors.textSecondary));
+      return StateView.error(message: _summaryError!, onAction: _loadSummary);
     }
     final limit = _limitCents;
     final used = _usedCents;
@@ -340,13 +342,15 @@ class _TransfersScreenState extends State<TransfersScreen> {
     required String subtitle,
     required VoidCallback onTap,
   }) =>
-      Card(
-        child: ListTile(
-          leading: Icon(icon),
-          title: Text(title),
-          subtitle: Text(subtitle),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: onTap,
+      PressableScale(
+        child: Card(
+          child: ListTile(
+            leading: Icon(icon),
+            title: Text(title),
+            subtitle: Text(subtitle),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: onTap,
+          ),
         ),
       );
 

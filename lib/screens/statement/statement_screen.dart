@@ -6,6 +6,7 @@ import '../../core/format.dart';
 import '../../core/statement_filter.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/wallet_provider.dart';
+import '../../widgets/state_view.dart';
 import '../../widgets/transaction_tile.dart';
 import '../transfers/transfers_screen.dart';
 import 'transaction_detail_screen.dart';
@@ -36,7 +37,8 @@ class _StatementScreenState extends State<StatementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final all = context.watch<WalletProvider>().transactions;
+    final wallet = context.watch<WalletProvider>();
+    final all = wallet.transactions;
     final list = filterTransactions(all, direction: _direction, period: _period);
     final totals = outflowByCategory(
       filterTransactions(all, direction: StatementDirection.outflow, period: _period),
@@ -89,15 +91,18 @@ class _StatementScreenState extends State<StatementScreen> {
               _SpendingChart(totals: totals),
               const SizedBox(height: 16),
             ],
-            if (list.isEmpty)
-              const Padding(
-                padding: EdgeInsets.only(top: 40),
-                child: Center(
-                  child: Text(
-                    'Nenhuma movimentação com esses filtros.',
-                    style: TextStyle(color: AppColors.textSecondary),
-                  ),
-                ),
+            if (list.isEmpty && all.isEmpty && wallet.syncError != null)
+              StateView.error(
+                message: wallet.syncError!,
+                onAction: wallet.refreshFromServer,
+              )
+            else if (list.isEmpty)
+              StateView.empty(
+                icon: Icons.receipt_long_outlined,
+                title: all.isEmpty ? 'Sem movimentações ainda' : 'Nada com esses filtros',
+                message: all.isEmpty
+                    ? 'Suas entradas e saídas aparecem aqui.'
+                    : 'Tente outro período ou tipo de movimentação.',
               )
             else
               for (var i = 0; i < list.length; i++)
