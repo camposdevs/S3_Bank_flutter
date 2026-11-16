@@ -11,51 +11,32 @@ import '../../providers/wallet_provider.dart';
 import '../../services/ledger_repository.dart';
 import '../../widgets/state_view.dart';
 
-/// Cartão de crédito: limite, fatura do mês, cartão virtual e compras.
-/// O provider nasce com a tela e morre com ela.
-class CreditCardScreen extends StatelessWidget {
-  const CreditCardScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => CreditCardProvider(LedgerRepository())..refresh(),
-      child: const _CreditCardView(),
-    );
-  }
-}
-
-class _CreditCardView extends StatelessWidget {
-  const _CreditCardView();
+/// Seção de crédito dentro de "Meus cartões". Usa o CreditCardProvider
+/// que a tela de cartões já fornece na árvore.
+class CreditCardSection extends StatelessWidget {
+  const CreditCardSection({super.key});
 
   @override
   Widget build(BuildContext context) {
     final cc = context.watch<CreditCardProvider>();
     final s = cc.summary;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Cartão de crédito')),
-      body: SafeArea(
-        child: s == null
-            ? (cc.error != null
-                ? StateView.error(message: cc.error!, onAction: cc.refresh)
-                : StateView.loading())
-            : RefreshIndicator(
-                onRefresh: cc.refresh,
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-                  children: [
-                    _LimitCard(summary: s),
-                    const SizedBox(height: 14),
-                    _InvoiceCard(summary: s),
-                    const SizedBox(height: 14),
-                    _VirtualCardSection(summary: s),
-                    const SizedBox(height: 22),
-                    _PurchasesSection(purchases: cc.purchases, canBuy: s.hasCard),
-                  ],
-                ),
-              ),
-      ),
+    if (s == null) {
+      return cc.error != null
+          ? StateView.error(message: cc.error!, onAction: cc.refresh)
+          : StateView.loading();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _CreditVisual(summary: s),
+        const SizedBox(height: 14),
+        _LimitCard(summary: s),
+        const SizedBox(height: 14),
+        _InvoiceCard(summary: s),
+        const SizedBox(height: 26),
+        _PurchasesSection(purchases: cc.purchases, canBuy: s.hasCard),
+      ],
     );
   }
 }
@@ -193,10 +174,16 @@ class _InvoiceCard extends StatelessWidget {
   }
 }
 
-class _VirtualCardSection extends StatelessWidget {
+class _CreditVisual extends StatelessWidget {
   final CardSummary summary;
 
-  const _VirtualCardSection({required this.summary});
+  const _CreditVisual({required this.summary});
+
+  static const _gradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF14142B), Color(0xFF3B2A7A), Color(0xFF6A4CE0)],
+  );
 
   static String _grouped(String number) => [
         for (var i = 0; i < number.length; i += 4)
@@ -224,8 +211,7 @@ class _VirtualCardSection extends StatelessWidget {
               const SizedBox(height: 8),
               Text('Validade ${card.expiry}'),
               const SizedBox(height: 4),
-              Text('CVV ${card.cvv}',
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
+              Text('CVV ${card.cvv}', style: const TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 12),
               const Text(
                 'Anote o CVV agora. Ele não será mostrado de novo.',
@@ -248,49 +234,98 @@ class _VirtualCardSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (summary.hasCard) {
-      return _Panel(
-        child: Row(
-          children: [
-            const Icon(Icons.credit_card, size: 30),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(maskedCard(summary.last4),
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                  const SizedBox(height: 2),
-                  Text('Validade ${summary.expiry}',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                ],
-              ),
-            ),
-          ],
+    final has = summary.hasCard;
+    return AspectRatio(
+      aspectRatio: 1.7,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: has ? _gradient : null,
+          color: has ? null : AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: has ? null : Border.all(color: AppColors.border),
         ),
-      );
-    }
-    return _Panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Cartão virtual',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-          const SizedBox(height: 4),
-          const Text(
-            'Crie um cartão para registrar compras no crédito.',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-          ),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: () => _create(context),
-            icon: const Icon(Icons.add_card_outlined),
-            label: const Text('Criar cartão virtual'),
-          ),
-        ],
+        child: has ? _filled() : _empty(context),
       ),
     );
   }
+
+  Widget _filled() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'S3 BANK',
+                style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.5),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white12,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Text(
+                  'Crédito',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Text(
+            maskedCard(summary.last4),
+            style: const TextStyle(fontSize: 17, letterSpacing: 2, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Disponível',
+                        style: TextStyle(color: Colors.white70, fontSize: 11)),
+                    Text(
+                      brl(summary.availableCents / 100),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  const Text('Validade', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                  Text(
+                    summary.expiry ?? '--/--',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      );
+
+  Widget _empty(BuildContext context) => Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.add_card_outlined, size: 34, color: AppColors.textSecondary),
+          const SizedBox(height: 10),
+          const Text(
+            'Você ainda não tem cartão de crédito',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+          FilledButton(
+            onPressed: () => _create(context),
+            child: const Text('Criar cartão virtual'),
+          ),
+        ],
+      );
 }
 
 class _PurchasesSection extends StatelessWidget {
@@ -325,7 +360,7 @@ class _PurchasesSection extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: category,
+                initialValue: category,
                 decoration: const InputDecoration(labelText: 'Categoria'),
                 items: [
                   for (final e in kTxCategories.entries)
