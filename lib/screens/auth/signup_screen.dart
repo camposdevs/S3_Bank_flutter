@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../animations/animations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
+import '../../core/br_validators.dart';
 import '../../widgets/auth_widgets.dart';
 import '../../widgets/gradient_button.dart';
 
@@ -24,6 +25,8 @@ class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _identifierController = TextEditingController();
+  final _cpfController = TextEditingController();
+  final _celularController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
   bool _obscurePassword = true;
@@ -33,6 +36,8 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _cpfController.dispose();
+    _celularController.dispose();
     _identifierController.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
@@ -55,6 +60,8 @@ class _SignupScreenState extends State<SignupScreen> {
       name: _nameController.text,
       identifier: _identifierController.text,
       password: _passwordController.text,
+      cpf: _cpfController.text,
+      celular: _celularController.text,
     );
 
     if (!mounted) return;
@@ -145,6 +152,26 @@ class _SignupScreenState extends State<SignupScreen> {
             textInputAction: TextInputAction.next,
             validator: (v) =>
                 (v == null || v.trim().isEmpty) ? 'Informe seu nome' : null,
+          ),
+          const SizedBox(height: 12),
+          AuthTextField(
+            controller: _cpfController,
+            label: 'CPF',
+            icon: Icons.badge_outlined,
+            keyboardType: TextInputType.number,
+            inputFormatters: BrValidators.elevenDigits,
+            textInputAction: TextInputAction.next,
+            validator: BrValidators.cpfError,
+          ),
+          const SizedBox(height: 12),
+          AuthTextField(
+            controller: _celularController,
+            label: 'Celular (DDD + número)',
+            icon: Icons.phone_iphone_outlined,
+            keyboardType: TextInputType.phone,
+            inputFormatters: BrValidators.elevenDigits,
+            textInputAction: TextInputAction.next,
+            validator: BrValidators.celularError,
           ),
           const SizedBox(height: 12),
           AuthTextField(

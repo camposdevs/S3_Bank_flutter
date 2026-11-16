@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -540,14 +541,18 @@ class PixScreen extends StatelessWidget {
           textAlign: TextAlign.center,
           style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
         ),
-        const SizedBox(height: 20),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton(
-            onPressed: onSimulatePayment,
-            child: const Text('Simular pagamento recebido'),
+        // Só em modo de desenvolvimento: este botão credita dinheiro sem
+        // pagador. Em produção ele não pode aparecer.
+        if (kDebugMode) ...[
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: onSimulatePayment,
+              child: const Text('Simular pagamento recebido (teste)'),
+            ),
           ),
-        ),
+        ],
       ],
     );
   }

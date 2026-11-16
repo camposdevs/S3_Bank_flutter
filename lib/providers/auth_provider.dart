@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../core/br_validators.dart';
+
 /// Conta do usuário logado. O [id] é o UUID do Supabase Auth, que é a
 /// mesma chave usada no banco (profiles, accounts, ledger_entries).
 class Account {
@@ -89,6 +91,10 @@ class AuthProvider extends ChangeNotifier {
     if (m.contains('rate limit') || m.contains('too many')) {
       return 'Muitas tentativas. Aguarde um pouco';
     }
+    if (m.contains('database error')) {
+      // O banco recusa CPF repetido e o Supabase oculta o motivo exato.
+      return 'Não foi possível criar a conta. Verifique seus dados ou se o CPF já tem cadastro.';
+    }
     if (m.contains('token') || m.contains('otp')) {
       return 'Código incorreto ou expirado';
     }
@@ -108,16 +114,27 @@ class AuthProvider extends ChangeNotifier {
     }
     if (_account?.id == user.id) return;
 
-    final name = await _loadName(user);
-    // Se a sessão mudou enquanto o nome carregava, descarta o resultado.
-    if (_auth.currentUser?.id != user.id) return;
-
+    // Entra já com os dados da própria sessão salva. Não espera a rede: sem
+    // internet, a tela de login não pode aparecer no lugar da conta salva.
+    final fallbackName = (user.userMetadata?['full_name'] as String?) ?? 'Cliente';
     _account = Account(
       id: user.id,
-      name: name,
+      name: fallbackName,
       identifier: user.email ?? '',
     );
     notifyListeners();
+
+    // Depois busca o nome real no banco e atualiza, se for diferente.
+    final name = await _loadName(user);
+    if (_auth.currentUser?.id != user.id) return;
+    if (_account?.id == user.id && _account?.name != name) {
+      _account = Account(
+        id: user.id,
+        name: name,
+        identifier: user.email ?? '',
+      );
+      notifyListeners();
+    }
   }
 
   Future<String> _loadName(User user) async {
@@ -158,8 +175,14 @@ class AuthProvider extends ChangeNotifier {
     required String name,
     required String identifier,
     required String password,
+    required String cpf,
+    required String celular,
   }) async {
     if (name.trim().length < 2) return 'Informe seu nome completo';
+    final cpfError = BrValidators.cpfError(cpf);
+    if (cpfError != null) return cpfError;
+    final celularError = BrValidators.celularError(celular);
+    if (celularError != null) return celularError;
     final email = normalizeEmail(identifier);
     if (!isValidEmail(email)) return 'Informe um e-mail válido';
     if (!isValidPassword(password)) return passwordMessage;
@@ -168,7 +191,11 @@ class AuthProvider extends ChangeNotifier {
       final res = await _auth.signUp(
         email: email,
         password: password,
-        data: {'full_name': name.trim()},
+        data: {
+          'full_name': name.trim(),
+          'cpf': BrValidators.digits(cpf),
+          'phone': BrValidators.celularForStorage(celular),
+        },
       );
       if (res.session == null) {
         return 'Confirme seu e-mail pelo link que enviamos e depois entre';
