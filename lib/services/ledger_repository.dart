@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/card_summary.dart';
 import '../models/transaction.dart';
 
 /// Erro com mensagem já pronta para o usuário.
@@ -248,6 +249,74 @@ class LedgerRepository {
         return (result as num).toInt();
       });
 
+  // ------------------------------------------------------------ perfil
+
+  /// Dados do próprio perfil (nome, CPF, celular).
+  Future<Map<String, dynamic>?> fetchProfile() => _run(() async {
+        final uid = _client.auth.currentUser!.id;
+        final row = await _client
+            .from('profiles')
+            .select('full_name, cpf, phone')
+            .eq('id', uid)
+            .maybeSingle();
+        return row == null ? null : Map<String, dynamic>.from(row);
+      });
+
+  /// Só o nome pode ser alterado pelo app (RLS: só o próprio perfil).
+  Future<void> updateFullName(String name) => _run(() async {
+        final uid = _client.auth.currentUser!.id;
+        await _client.from('profiles').update({'full_name': name}).eq('id', uid);
+      });
+
+  // ------------------------------------------------------------ cartão de crédito
+
+  Future<CardSummary> fetchCardSummary() => _run(() async {
+        final rows = (await _client.rpc('get_card_summary')) as List;
+        return CardSummary.fromRow(Map<String, dynamic>.from(rows.first as Map));
+      });
+
+  /// Cria o cartão virtual. O CVV vem só nesta chamada.
+  Future<({String number, String expiry, String cvv})> createVirtualCard() => _run(() async {
+        final rows = (await _client.rpc('create_virtual_card')) as List;
+        final row = Map<String, dynamic>.from(rows.first as Map);
+        return (
+          number: row['card_number'] as String,
+          expiry: row['card_expiry'] as String,
+          cvv: row['card_cvv'] as String,
+        );
+      });
+
+  Future<void> makeCardPurchase({
+    required String merchant,
+    required int amountCents,
+    required String category,
+  }) =>
+      _run(() async {
+        await _client.rpc('make_card_purchase', params: {
+          'p_merchant': merchant,
+          'p_amount_cents': amountCents,
+          'p_category': category,
+        });
+      });
+
+  Future<List<CardPurchase>> fetchCardPurchases({int limit = 50}) => _run(() async {
+        final rows = await _client
+            .from('card_purchases')
+            .select('id, merchant, category, amount_cents, purchased_at, paid_at')
+            .order('purchased_at', ascending: false)
+            .limit(limit);
+        return rows.map((r) => CardPurchase.fromRow(Map<String, dynamic>.from(r))).toList();
+      });
+
+  /// Paga a fatura do mês informado (primeiro dia do mês).
+  Future<int> payCardInvoice(DateTime month) => _run(() async {
+        final first = DateTime(month.year, month.month, 1);
+        final iso = '${first.year.toString().padLeft(4, '0')}-'
+            '${first.month.toString().padLeft(2, '0')}-01';
+        final result = await _client.rpc('pay_card_invoice', params: {'p_month': iso});
+        return (result as num).toInt();
+      });
+
   // ------------------------------------------------------------ mapeamento
 
   /// Converte uma linha de `ledger_entries` no modelo que as telas usam.
@@ -285,6 +354,9 @@ class LedgerRepository {
       case 'boleto_in':
         type = TransactionType.pixReceived;
         title = 'Boleto recebido';
+      case 'card_payment':
+        type = TransactionType.pixSent;
+        title = 'Pagamento da fatura do cartão';
       case 'fee':
         type = TransactionType.pixSent;
         title = 'Tarifa';
@@ -360,6 +432,13 @@ class LedgerRepository {
     if (m.contains('próprio boleto')) return 'Você não pode pagar o seu próprio boleto';
     if (m.contains('informe o banco de destino')) return 'Informe o banco de destino';
     if (m.contains('prazo inválido')) return 'Prazo inválido';
+    if (m.contains('cartão já criado')) return 'Você já tem um cartão virtual';
+    if (m.contains('crie seu cartão virtual')) return 'Crie seu cartão virtual antes de comprar';
+    if (m.contains('limite do cartão insuficiente')) {
+      return 'Limite do cartão insuficiente para esta compra';
+    }
+    if (m.contains('não há nada a pagar')) return 'Não há nada a pagar nesta fatura';
+    if (m.contains('informe onde foi a compra')) return 'Informe onde foi a compra';
     if (m.contains('could not find the function') || m.contains('schema cache')) {
       return 'Banco desatualizado: execute a migração 0003 no Supabase';
     }

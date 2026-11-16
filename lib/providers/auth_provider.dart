@@ -181,6 +181,39 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Atualiza o nome exibido na sessão (depois de salvar no banco).
+  void setDisplayName(String name) {
+    final acc = _account;
+    if (acc == null) return;
+    _account = Account(id: acc.id, name: name, identifier: acc.identifier);
+    notifyListeners();
+  }
+
+  /// Troca a senha. Confere a senha atual antes. Retorna null ou o erro.
+  Future<String?> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final email = _account?.identifier ?? '';
+    if (email.isEmpty) return 'Sessão expirada. Entre de novo.';
+    if (!isValidPassword(newPassword)) return passwordMessage;
+    if (currentPassword == newPassword) return 'A nova senha precisa ser diferente da atual';
+
+    try {
+      // confere a senha atual: se estiver errada, o Supabase recusa aqui
+      await _auth.signInWithPassword(email: email, password: currentPassword);
+      await _auth.updateUser(UserAttributes(password: newPassword));
+      return null;
+    } on AuthException catch (e) {
+      if (e.message.toLowerCase().contains('invalid login')) {
+        return 'Senha atual incorreta';
+      }
+      return _mapError(e);
+    } catch (_) {
+      return _networkError;
+    }
+  }
+
   void signOut() {
     // Zera a conta já, para o coordenador salvar os dados desta conta.
     _account = null;

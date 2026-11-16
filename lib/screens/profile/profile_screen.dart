@@ -5,6 +5,10 @@ import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../widgets/tier_badge.dart';
+import 'help_center_screen.dart';
+import 'notifications_screen.dart';
+import 'personal_data_screen.dart';
+import 'security_screen.dart';
 
 /// Tela de perfil do usuário: dados da conta, nível atual e opções
 /// gerais do app. Hoje tudo estático além do nome/nível (que vêm dos
@@ -84,24 +88,32 @@ class ProfileScreen extends StatelessWidget {
             _ProfileTile(
               icon: Icons.person_outline,
               label: 'Dados pessoais',
-              onTap: () => _showComingSoon(context),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const PersonalDataScreen()),
+              ),
             ),
             _ProfileTile(
               icon: Icons.shield_outlined,
               label: 'Segurança',
-              onTap: () => _showComingSoon(context),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SecurityScreen()),
+              ),
             ),
             _ProfileTile(
               icon: Icons.notifications_outlined,
               label: 'Notificações',
-              onTap: () => _showComingSoon(context),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              ),
             ),
             const SizedBox(height: 20),
             const _SectionLabel('Suporte'),
             _ProfileTile(
               icon: Icons.help_outline,
               label: 'Central de ajuda',
-              onTap: () => _showComingSoon(context),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const HelpCenterScreen()),
+              ),
             ),
             _ProfileTile(
               icon: Icons.info_outline,
@@ -135,12 +147,6 @@ class ProfileScreen extends StatelessWidget {
     final auth = context.read<AuthProvider>();
     Navigator.of(context).popUntil((route) => route.isFirst);
     auth.signOut();
-  }
-
-  void _showComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Em breve.')),
-    );
   }
 
   void _showAboutDialog(BuildContext context) {

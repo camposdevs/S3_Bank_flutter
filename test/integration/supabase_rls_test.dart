@@ -970,5 +970,171 @@ void main() {
         )),
       );
     });
+
+    // ------------------------------------------------------------ perfil
+
+    test('perfil: edita o próprio nome e não o de outro usuário', () async {
+      final a = await _signUpUser('perfA');
+      final b = await _signUpUser('perfB');
+
+      await a.client.from('profiles').update({'full_name': 'Nome Novo'}).eq('id', a.uid);
+      final meu = await a.client.from('profiles').select('full_name').eq('id', a.uid).single();
+      expect(meu['full_name'], 'Nome Novo');
+
+      final alterado = await b.client
+          .from('profiles')
+          .update({'full_name': 'Invasor'})
+          .eq('id', a.uid)
+          .select();
+      expect(alterado, isEmpty);
+    });
+
+    // ------------------------------------------------------------ cartão de crédito
+
+    test('cartão: cria o virtual uma vez e não cria de novo', () async {
+      final a = await _signUpUser('cardA');
+      final rows = (await a.client.rpc('create_virtual_card')) as List;
+      final number = rows.first['card_number'] as String;
+      expect(number.length, 16);
+      expect(number.startsWith('5'), isTrue);
+      expect((rows.first['card_cvv'] as String).length, 3);
+
+      await expectLater(
+        Future(() async => a.client.rpc('create_virtual_card')),
+        throwsA(isA<PostgrestException>().having(
+          (e) => e.message,
+          'message',
+          contains('cartão já criado'),
+        )),
+      );
+
+      final resumo = (await a.client.rpc('get_card_summary')) as List;
+      expect(resumo.first['has_card'], isTrue);
+      expect(resumo.first['card_last4'], number.substring(12));
+    });
+
+    test('cartão: compra sem cartão é recusada; com cartão entra na fatura sem debitar', () async {
+      final a = await _signUpUser('cardCompra');
+      final accId = await _myAccountId(a.client, a.uid);
+      await a.client.rpc('simulate_deposit', params: {
+        'p_amount_cents': 100000,
+        'p_description': 'saldo',
+      });
+
+      await expectLater(
+        Future(() async => a.client.rpc('make_card_purchase', params: {
+              'p_merchant': 'Loja',
+              'p_amount_cents': 5000,
+              'p_category': 'compras',
+            })),
+        throwsA(isA<PostgrestException>().having(
+          (e) => e.message,
+          'message',
+          contains('crie seu cartão virtual'),
+        )),
+      );
+
+      await a.client.rpc('create_virtual_card');
+      await a.client.rpc('make_card_purchase', params: {
+        'p_merchant': 'Loja',
+        'p_amount_cents': 5000,
+        'p_category': 'compras',
+      });
+      // compra no crédito não tira dinheiro da conta agora
+      expect(await _balanceCents(a.client, accId), 100000);
+      final resumo = (await a.client.rpc('get_card_summary')) as List;
+      expect((resumo.first['invoice_total_cents'] as num).toInt(), 5000);
+    });
+
+    test('cartão: respeita o limite de R\$ 3.000', () async {
+      final a = await _signUpUser('cardLim');
+      await a.client.rpc('create_virtual_card');
+      await a.client.rpc('make_card_purchase', params: {
+        'p_merchant': 'Loja',
+        'p_amount_cents': 200000,
+        'p_category': 'compras',
+      });
+
+      await expectLater(
+        Future(() async => a.client.rpc('make_card_purchase', params: {
+              'p_merchant': 'Loja',
+              'p_amount_cents': 200000,
+              'p_category': 'compras',
+            })),
+        throwsA(isA<PostgrestException>().having(
+          (e) => e.message,
+          'message',
+          contains('limite do cartão insuficiente'),
+        )),
+      );
+    });
+
+    test('cartão: paga a fatura, debita o saldo e quita as compras', () async {
+      final a = await _signUpUser('cardFat');
+      final accId = await _myAccountId(a.client, a.uid);
+      await a.client.rpc('simulate_deposit', params: {
+        'p_amount_cents': 200000,
+        'p_description': 'saldo',
+      });
+      await a.client.rpc('create_virtual_card');
+      await a.client.rpc('make_card_purchase', params: {
+        'p_merchant': 'Mercado',
+        'p_amount_cents': 50000,
+        'p_category': 'alimentacao',
+      });
+
+      final resumo = (await a.client.rpc('get_card_summary')) as List;
+      final mes = resumo.first['invoice_month'] as String;
+      final pago = await a.client.rpc('pay_card_invoice', params: {'p_month': mes});
+      expect((pago as num).toInt(), 50000);
+      expect(await _balanceCents(a.client, accId), 150000);
+
+      final depois = (await a.client.rpc('get_card_summary')) as List;
+      expect((depois.first['invoice_total_cents'] as num).toInt(), 0);
+
+      await expectLater(
+        Future(() async => a.client.rpc('pay_card_invoice', params: {'p_month': mes})),
+        throwsA(isA<PostgrestException>().having(
+          (e) => e.message,
+          'message',
+          contains('não há nada a pagar'),
+        )),
+      );
+    });
+
+    test('cartão: fatura sem saldo é recusada', () async {
+      final a = await _signUpUser('cardSemSaldo');
+      await a.client.rpc('create_virtual_card');
+      await a.client.rpc('make_card_purchase', params: {
+        'p_merchant': 'Loja',
+        'p_amount_cents': 5000,
+        'p_category': 'compras',
+      });
+      final resumo = (await a.client.rpc('get_card_summary')) as List;
+      final mes = resumo.first['invoice_month'] as String;
+
+      await expectLater(
+        Future(() async => a.client.rpc('pay_card_invoice', params: {'p_month': mes})),
+        throwsA(isA<PostgrestException>().having(
+          (e) => e.message,
+          'message',
+          contains('saldo insuficiente'),
+        )),
+      );
+    });
+
+    test('cartão: outro usuário não vê as compras', () async {
+      final a = await _signUpUser('cardRlsA');
+      final b = await _signUpUser('cardRlsB');
+      await a.client.rpc('create_virtual_card');
+      await a.client.rpc('make_card_purchase', params: {
+        'p_merchant': 'Privada',
+        'p_amount_cents': 1000,
+        'p_category': 'lazer',
+      });
+
+      final visivel = await b.client.from('card_purchases').select();
+      expect(visivel, isEmpty);
+    });
   }, skip: skip);
 }

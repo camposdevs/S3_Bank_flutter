@@ -1,3 +1,4 @@
+import 'credit_card_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -22,7 +23,18 @@ class _CardScreenState extends State<CardScreen> {
     final card = cardProvider.card;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Cartão Digital')),
+      appBar: AppBar(
+        title: const Text('Cartão Digital'),
+        actions: [
+          IconButton(
+            tooltip: 'Cartão de crédito',
+            icon: const Icon(Icons.credit_score_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const CreditCardScreen()),
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
