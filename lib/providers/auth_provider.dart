@@ -38,7 +38,7 @@ class AuthProvider extends ChangeNotifier {
 
   // Estado temporário da recuperação de senha (só em memória).
   String? _resetEmail;
-  bool _resetVerified = false;
+  String? _resetCode;
 
   /// [connect] = false cria o provider sem tocar no Supabase (usado nos
   /// testes de widget e de dados locais). Nesse modo ele começa deslogado.
@@ -261,59 +261,64 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // ------------------------------------------------- recuperar a senha
+  //
+  // O código é enviado e conferido pelas Edge Functions do Supabase
+  // (send-reset-code e verify-reset-code), que usam o Resend para o e-mail.
+  // A resposta é sempre a mesma para e-mails sem conta, de propósito.
 
-  /// Etapa 1: envia o código por e-mail (template com {{ .Token }}).
+  /// Etapa 1: pede o envio do código de 6 dígitos para o e-mail.
   Future<String?> requestPasswordReset(String identifier) async {
     final email = normalizeEmail(identifier);
     if (!isValidEmail(email)) return 'Informe um e-mail válido';
 
     try {
-      await _auth.resetPasswordForEmail(email);
-      _resetEmail = email;
-      _resetVerified = false;
-      return null;
-    } on AuthException catch (e) {
-      return _mapError(e);
-    } catch (_) {
-      return _networkError;
-    }
-  }
-
-  /// Etapa 2: confere o código de 6 dígitos. Isso também abre uma sessão
-  /// temporária, necessária para trocar a senha na etapa 3.
-  Future<String?> verifyResetCode(String code) async {
-    final email = _resetEmail;
-    if (email == null) return 'Solicite um novo código';
-
-    try {
-      await _auth.verifyOTP(
-        type: OtpType.recovery,
-        email: email,
-        token: code.trim(),
+      final res = await Supabase.instance.client.functions.invoke(
+        'send-reset-code',
+        body: {'email': email},
       );
-      _resetVerified = true;
+      final data = res.data as Map<String, dynamic>?;
+      if (data?['ok'] != true) {
+        return (data?['error'] as String?) ?? _genericError;
+      }
+      _resetEmail = email;
+      _resetCode = null;
       return null;
-    } on AuthException catch (e) {
-      return _mapError(e);
     } catch (_) {
       return _networkError;
     }
   }
 
-  /// Etapa 3: grava a nova senha.
+  /// Etapa 2: guarda o código digitado. Ele é conferido no último passo,
+  /// junto com a nova senha, para não precisar de uma terceira função.
+  Future<String?> verifyResetCode(String code) async {
+    if (_resetEmail == null) return 'Solicite um novo código';
+    final c = code.trim();
+    if (!RegExp(r'^\d{6}$').hasMatch(c)) return 'Código inválido';
+    _resetCode = c;
+    return null;
+  }
+
+  /// Etapa 3: confere o código e troca a senha no servidor.
   Future<String?> resetPassword(String newPassword) async {
-    if (!_resetVerified || _auth.currentSession == null) {
-      return 'A recuperação expirou. Comece de novo.';
+    final email = _resetEmail;
+    final code = _resetCode;
+    if (email == null || code == null) {
+      return 'Solicite um novo código';
     }
     if (!isValidPassword(newPassword)) return passwordMessage;
 
     try {
-      await _auth.updateUser(UserAttributes(password: newPassword));
+      final res = await Supabase.instance.client.functions.invoke(
+        'verify-reset-code',
+        body: {'email': email, 'code': code, 'password': newPassword},
+      );
+      final data = res.data as Map<String, dynamic>?;
+      if (data?['ok'] != true) {
+        return (data?['error'] as String?) ?? _genericError;
+      }
       _resetEmail = null;
-      _resetVerified = false;
+      _resetCode = null;
       return null;
-    } on AuthException catch (e) {
-      return _mapError(e);
     } catch (_) {
       return _networkError;
     }
