@@ -9,7 +9,7 @@ void main() {
   });
 
   test('aceita o código digitado com espaços e pontos', () {
-    final formatado = '12345.67890 12345.678901 23456.789012 3 45678901234567';
+    const formatado = '12345.67890 12345.678901 23456.789012 3 45678901234567';
     expect(boletoDigits(formatado).length, 47);
     expect(isValidBoletoCode(formatado), isTrue);
   });

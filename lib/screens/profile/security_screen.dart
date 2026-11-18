@@ -65,7 +65,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
   @override
   Widget build(BuildContext context) {
     InputDecoration deco(String label) => InputDecoration(labelText: label);
-    final keyboard = TextInputType.number;
+    const keyboard = TextInputType.number;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Segurança')),

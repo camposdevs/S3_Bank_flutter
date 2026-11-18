@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../../animations/animations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/user_tier.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/savings_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/wallet_provider.dart';
