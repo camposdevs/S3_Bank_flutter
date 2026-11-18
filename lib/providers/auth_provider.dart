@@ -283,7 +283,8 @@ class AuthProvider extends ChangeNotifier {
       _resetEmail = email;
       _resetCode = null;
       return null;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[auth] send-reset-code falhou: $e');
       return _networkError;
     }
   }
@@ -319,7 +320,8 @@ class AuthProvider extends ChangeNotifier {
       _resetEmail = null;
       _resetCode = null;
       return null;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[auth] verify-reset-code falhou: $e');
       return _networkError;
     }
   }
