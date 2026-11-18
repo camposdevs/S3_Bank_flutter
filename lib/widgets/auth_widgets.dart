@@ -11,11 +11,11 @@ class AuthBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IgnorePointer(
+    return const IgnorePointer(
       child: Stack(
         fit: StackFit.expand,
         children: [
-          const ColoredBox(color: AppColors.background),
+          ColoredBox(color: AppColors.background),
           Positioned(
             top: -170,
             left: -130,
@@ -147,7 +147,7 @@ class AuthTextField extends StatelessWidget {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: AppColors.border),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),

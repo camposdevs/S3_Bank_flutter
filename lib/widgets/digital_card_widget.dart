@@ -145,7 +145,7 @@ class _ChipAndContactless extends StatelessWidget {
           width: 38,
           height: 28,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
+            gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [AppColors.chipSilver, AppColors.chipSilverDark],

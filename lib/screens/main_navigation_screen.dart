@@ -77,7 +77,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
             topLeft: Radius.circular(24),
             topRight: Radius.circular(24),
           ),
-          border: Border(top: BorderSide(color: AppColors.border)),
+          border: const Border(top: BorderSide(color: AppColors.border)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.35),
