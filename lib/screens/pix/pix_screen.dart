@@ -278,7 +278,6 @@ class PixScreen extends StatelessWidget {
                       final amount = parsed?.amount ?? _parseAmount(amountController.text)!;
                       // Fecha o painel antes de pedir o PIN: o diálogo do PIN não
                       // pode nascer por cima de um painel que está sendo fechado.
-                      final messenger = ScaffoldMessenger.of(context);
                       Navigator.of(ctx).pop();
                       if (!context.mounted) return;
                       final auth = await obtainPinAuth(context);
