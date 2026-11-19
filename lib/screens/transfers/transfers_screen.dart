@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/pin_gate.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -112,9 +113,13 @@ class _TransfersScreenState extends State<TransfersScreen> {
       return;
     }
     final info = infoCtrl.text.trim();
+    if (!context.mounted) return;
+    final auth = await obtainPinAuth(context);
+    if (auth == null) return;
     final error = await wallet.withdrawToBank(
       amount,
       bank: bankCtrl.text,
+      auth: auth,
       accountInfo: info.isEmpty ? null : info,
     );
     _snack(error ?? 'Transferência de ${brl(amount)} enviada.');
@@ -288,7 +293,10 @@ class _TransfersScreenState extends State<TransfersScreen> {
     );
     if (confirmed != true) return;
 
-    final error = await wallet.payBoleto(digits);
+    if (!context.mounted) return;
+    final auth = await obtainPinAuth(context);
+    if (auth == null) return;
+    final error = await wallet.payBoleto(digits, auth);
     _snack(error ?? 'Boleto de ${brl(amount)} pago.');
     if (error == null) _loadSummary();
   }

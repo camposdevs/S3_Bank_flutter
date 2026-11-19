@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/pin_gate.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/card_format.dart';
@@ -132,7 +133,10 @@ class _InvoiceCard extends StatelessWidget {
     );
     if (ok != true) return;
 
-    final error = await cc.payInvoice();
+    if (!context.mounted) return;
+    final auth = await obtainPinAuth(context);
+    if (auth == null) return;
+    final error = await cc.payInvoice(auth);
     if (error == null) await wallet.refreshFromServer();
     messenger.showSnackBar(SnackBar(content: Text(error ?? 'Fatura paga com sucesso.')));
   }

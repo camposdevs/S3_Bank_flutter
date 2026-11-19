@@ -85,11 +85,11 @@ class WalletProvider extends ChangeNotifier {
   }
 
   /// Paga uma cobrança. Retorna null em sucesso ou a mensagem de erro.
-  Future<String?> payCharge(String txid) async {
+  Future<String?> payCharge(String txid, String auth) async {
     final ledger = _ledger;
     if (ledger == null) return 'Indisponível no momento';
     try {
-      await ledger.payCharge(txid);
+      await ledger.payCharge(txid, auth);
       await refreshFromServer();
       return null;
     } on LedgerException catch (e) {
@@ -101,6 +101,7 @@ class WalletProvider extends ChangeNotifier {
   Future<String?> withdrawToBank(
     double amount, {
     required String bank,
+    required String auth,
     String? accountInfo,
   }) async {
     final ledger = _ledger;
@@ -108,7 +109,12 @@ class WalletProvider extends ChangeNotifier {
     final cents = (_round2(amount) * 100).round();
     if (cents <= 0) return 'Valor inválido';
     try {
-      await ledger.withdrawToBank(amountCents: cents, bank: bank, accountInfo: accountInfo);
+      await ledger.withdrawToBank(
+        amountCents: cents,
+        bank: bank,
+        auth: auth,
+        accountInfo: accountInfo,
+      );
       await refreshFromServer();
       return null;
     } on LedgerException catch (e) {
@@ -145,11 +151,11 @@ class WalletProvider extends ChangeNotifier {
   }
 
   /// Paga um boleto. Retorna null em sucesso ou o erro.
-  Future<String?> payBoleto(String code) async {
+  Future<String?> payBoleto(String code, String auth) async {
     final ledger = _ledger;
     if (ledger == null) return 'Disponível só com conexão com o banco';
     try {
-      await ledger.payBoleto(code);
+      await ledger.payBoleto(code, auth);
       await refreshFromServer();
       return null;
     } on LedgerException catch (e) {
@@ -272,7 +278,7 @@ class WalletProvider extends ChangeNotifier {
 
   /// Pix enviado. No modo banco, o servidor valida saldo e chave.
   /// Retorna null em sucesso, ou a mensagem de erro para mostrar.
-  Future<String?> payPix(double amount, {required String recipient}) async {
+  Future<String?> payPix(double amount, {required String recipient, required String auth}) async {
     final value = _round2(amount);
     if (value <= 0) return 'Valor inválido';
     final ledger = _ledger;
@@ -283,6 +289,7 @@ class WalletProvider extends ChangeNotifier {
       await ledger.sendPix(
         keyValue: recipient,
         amountCents: (value * 100).round(),
+        auth: auth,
         description: recipient,
       );
       await refreshFromServer();

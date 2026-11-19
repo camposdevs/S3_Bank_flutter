@@ -62,11 +62,11 @@ class CreditCardProvider extends ChangeNotifier {
   }
 
   /// Paga a fatura do mês atual. Retorna null em sucesso ou o erro.
-  Future<String?> payInvoice() async {
+  Future<String?> payInvoice(String auth) async {
     final s = _summary;
     if (s == null || s.invoiceTotalCents == 0) return 'Não há nada a pagar nesta fatura.';
     try {
-      await _ledger.payCardInvoice(s.invoiceMonth);
+      await _ledger.payCardInvoice(s.invoiceMonth, auth);
       await refresh();
       return null;
     } on LedgerException catch (e) {

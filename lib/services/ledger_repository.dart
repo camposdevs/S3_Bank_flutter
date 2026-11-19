@@ -58,16 +58,19 @@ class LedgerRepository {
         return rows.map((r) => toTransaction(Map<String, dynamic>.from(r))).toList();
       });
 
+  /// Pix com PIN: `auth` é a autorização gerada por authorizeTransactionPin.
   Future<void> sendPix({
     required String keyValue,
     required int amountCents,
+    required String auth,
     String? description,
   }) =>
       _run(() async {
-        await _client.rpc('pix_transfer', params: {
+        await _client.rpc('pix_transfer_pin', params: {
           'p_key_value': keyValue,
           'p_amount_cents': amountCents,
           'p_description': description,
+          'p_auth': auth,
         });
       });
 
@@ -172,8 +175,11 @@ class LedgerRepository {
       });
 
   /// Paga a cobrança. Devolve o valor pago em centavos.
-  Future<int> payCharge(String txid) => _run(() async {
-        final result = await _client.rpc('pay_charge', params: {'p_txid': txid});
+  Future<int> payCharge(String txid, String auth) => _run(() async {
+        final result = await _client.rpc('pay_charge_pin', params: {
+          'p_txid': txid,
+          'p_auth': auth,
+        });
         return (result as num).toInt();
       });
 
@@ -211,13 +217,15 @@ class LedgerRepository {
   Future<void> withdrawToBank({
     required int amountCents,
     required String bank,
+    required String auth,
     String? accountInfo,
   }) =>
       _run(() async {
-        await _client.rpc('withdraw_to_bank', params: {
+        await _client.rpc('withdraw_to_bank_pin', params: {
           'p_amount_cents': amountCents,
           'p_bank': bank,
           'p_account_info': accountInfo,
+          'p_auth': auth,
         });
       });
 
@@ -244,8 +252,11 @@ class LedgerRepository {
         return Map<String, dynamic>.from(rows.first as Map);
       });
 
-  Future<int> payBoleto(String code) => _run(() async {
-        final result = await _client.rpc('pay_boleto', params: {'p_code': code});
+  Future<int> payBoleto(String code, String auth) => _run(() async {
+        final result = await _client.rpc('pay_boleto_pin', params: {
+          'p_code': code,
+          'p_auth': auth,
+        });
         return (result as num).toInt();
       });
 
@@ -309,12 +320,36 @@ class LedgerRepository {
       });
 
   /// Paga a fatura do mês informado (primeiro dia do mês).
-  Future<int> payCardInvoice(DateTime month) => _run(() async {
+  Future<int> payCardInvoice(DateTime month, String auth) => _run(() async {
         final first = DateTime(month.year, month.month, 1);
         final iso = '${first.year.toString().padLeft(4, '0')}-'
             '${first.month.toString().padLeft(2, '0')}-01';
-        final result = await _client.rpc('pay_card_invoice', params: {'p_month': iso});
+        final result = await _client.rpc('pay_card_invoice_pin', params: {
+          'p_month': iso,
+          'p_auth': auth,
+        });
         return (result as num).toInt();
+      });
+
+  // ------------------------------------------------------------ PIN de transação
+
+  Future<bool> hasTransactionPin() => _run(() async {
+        final r = await _client.rpc('has_transaction_pin');
+        return r == true;
+      });
+
+  /// Cria o PIN, ou troca o atual (nesse caso, `current` é obrigatório).
+  Future<void> setTransactionPin(String pin, {String? current}) => _run(() async {
+        await _client.rpc('set_transaction_pin', params: {
+          'p_pin': pin,
+          'p_current_pin': current,
+        });
+      });
+
+  /// Devolve a autorização de uso único, ou null se o PIN estiver errado.
+  Future<String?> authorizeTransactionPin(String pin) => _run(() async {
+        final r = await _client.rpc('authorize_transaction_pin', params: {'p_pin': pin});
+        return r as String?;
       });
 
   // ------------------------------------------------------------ mapeamento
@@ -439,6 +474,11 @@ class LedgerRepository {
     }
     if (m.contains('não há nada a pagar')) return 'Não há nada a pagar nesta fatura';
     if (m.contains('informe onde foi a compra')) return 'Informe onde foi a compra';
+    if (m.contains('confirmação de pin')) return 'A confirmação do PIN expirou. Tente de novo';
+    if (m.contains('pin bloqueado')) return 'PIN bloqueado por tentativas erradas. Tente em 15 minutos';
+    if (m.contains('crie seu pin')) return 'Crie seu PIN de transação antes de continuar';
+    if (m.contains('o pin precisa ter 6 números')) return 'O PIN precisa ter 6 números';
+    if (m.contains('pin atual incorreto')) return 'PIN atual incorreto';
     if (m.contains('could not find the function') || m.contains('schema cache')) {
       return 'Banco desatualizado: execute a migração 0003 no Supabase';
     }

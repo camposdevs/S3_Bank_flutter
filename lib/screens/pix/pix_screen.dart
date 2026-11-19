@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../../widgets/pin_gate.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -180,7 +181,10 @@ class PixScreen extends StatelessWidget {
     );
     if (confirmed != true) return;
 
-    final error = await wallet.payCharge(txid);
+    if (!context.mounted) return;
+    final auth = await obtainPinAuth(context);
+    if (auth == null) return;
+    final error = await wallet.payCharge(txid, auth);
     messenger.showSnackBar(
       SnackBar(content: Text(error ?? 'Pagamento de ${_brl(amount)} enviado!')),
     );
@@ -272,7 +276,9 @@ class PixScreen extends StatelessWidget {
                       }
                       final recipient = parsed?.key ?? typed;
                       final amount = parsed?.amount ?? _parseAmount(amountController.text)!;
-                      final error = await wallet.payPix(amount, recipient: recipient);
+                      final auth = await obtainPinAuth(context);
+                      if (auth == null) return;
+                      final error = await wallet.payPix(amount, recipient: recipient, auth: auth);
                       if (!ctx.mounted || !context.mounted) return;
                       Navigator.of(ctx).pop();
                       if (error == null) {

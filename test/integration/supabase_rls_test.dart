@@ -93,6 +93,15 @@ Future<String> _onlyGoalId(SupabaseClient client) async {
   return row['goal_id'] as String;
 }
 
+/// Gera uma autorização de PIN para o usuário (cria o PIN se ainda não tiver).
+Future<String> _pinAuth(SupabaseClient client) async {
+  final tem = await client.rpc('has_transaction_pin');
+  if (tem != true) {
+    await client.rpc('set_transaction_pin', params: {'p_pin': '123456'});
+  }
+  return (await client.rpc('authorize_transaction_pin', params: {'p_pin': '123456'})) as String;
+}
+
 void main() {
   final skip = _enabled
       ? null
@@ -145,7 +154,7 @@ void main() {
         'p_amount_cents': 10000,
         'p_description': 'saldo inicial',
       });
-      await a.client.rpc('pix_transfer', params: {
+      await a.client.rpc('pix_transfer_pin', params: {'p_auth': await _pinAuth(a.client), 
         'p_key_value': b.email,
         'p_amount_cents': 2500,
         'p_description': 'teste pix',
@@ -166,7 +175,7 @@ void main() {
       });
 
       await expectLater(
-        Future(() async => a.client.rpc('pix_transfer', params: {
+        Future(() async => a.client.rpc('pix_transfer_pin', params: {'p_auth': await _pinAuth(a.client), 
               'p_key_value': b.email,
               'p_amount_cents': 999999999,
             })),
@@ -585,7 +594,7 @@ void main() {
       expect((info.first['charge_amount_cents'] as num).toInt(), 2500);
       expect(info.first['charge_status'], 'open');
 
-      final paid = await pag.client.rpc('pay_charge', params: {'p_txid': txid});
+      final paid = await pag.client.rpc('pay_charge_pin', params: {'p_auth': await _pinAuth(pag.client), 'p_txid': txid});
       expect((paid as num).toInt(), 2500);
       expect(await _balanceCents(pag.client, accPag), 7500);
       expect(await _balanceCents(rec.client, accRec), 2500);
@@ -610,10 +619,10 @@ void main() {
         'p_expires_minutes': 30,
       })) as List;
       final txid = created.first['charge_txid'] as String;
-      await pag.client.rpc('pay_charge', params: {'p_txid': txid});
+      await pag.client.rpc('pay_charge_pin', params: {'p_auth': await _pinAuth(pag.client), 'p_txid': txid});
 
       await expectLater(
-        Future(() async => pag.client.rpc('pay_charge', params: {'p_txid': txid})),
+        Future(() async => pag.client.rpc('pay_charge_pin', params: {'p_auth': await _pinAuth(pag.client), 'p_txid': txid})),
         throwsA(isA<PostgrestException>().having(
           (e) => e.message,
           'message',
@@ -647,7 +656,7 @@ void main() {
       expect(info.first['charge_status'], 'expired');
 
       await expectLater(
-        Future(() async => pag.client.rpc('pay_charge', params: {'p_txid': txid})),
+        Future(() async => pag.client.rpc('pay_charge_pin', params: {'p_auth': await _pinAuth(pag.client), 'p_txid': txid})),
         throwsA(isA<PostgrestException>().having(
           (e) => e.message,
           'message',
@@ -676,7 +685,7 @@ void main() {
       final txid = created.first['charge_txid'] as String;
 
       await expectLater(
-        Future(() async => rec.client.rpc('pay_charge', params: {'p_txid': txid})),
+        Future(() async => rec.client.rpc('pay_charge_pin', params: {'p_auth': await _pinAuth(rec.client), 'p_txid': txid})),
         throwsA(isA<PostgrestException>().having(
           (e) => e.message,
           'message',
@@ -702,7 +711,7 @@ void main() {
       final txid = created.first['charge_txid'] as String;
 
       await expectLater(
-        Future(() async => pag.client.rpc('pay_charge', params: {'p_txid': txid})),
+        Future(() async => pag.client.rpc('pay_charge_pin', params: {'p_auth': await _pinAuth(pag.client), 'p_txid': txid})),
         throwsA(isA<PostgrestException>().having(
           (e) => e.message,
           'message',
@@ -745,7 +754,7 @@ void main() {
         'p_amount_cents': 10000,
         'p_description': 'saldo',
       });
-      await a.client.rpc('pix_transfer', params: {
+      await a.client.rpc('pix_transfer_pin', params: {'p_auth': await _pinAuth(a.client), 
         'p_key_value': b.email,
         'p_amount_cents': 2500,
         'p_description': 'almoço',
@@ -821,7 +830,7 @@ void main() {
         'p_amount_cents': 10000,
         'p_description': 'saldo',
       });
-      await a.client.rpc('pix_transfer', params: {
+      await a.client.rpc('pix_transfer_pin', params: {'p_auth': await _pinAuth(a.client), 
         'p_key_value': b.email,
         'p_amount_cents': 500,
         'p_description': 'teste',
@@ -855,7 +864,7 @@ void main() {
         'p_description': 'saldo',
       });
 
-      await a.client.rpc('withdraw_to_bank', params: {
+      await a.client.rpc('withdraw_to_bank_pin', params: {'p_auth': await _pinAuth(a.client), 
         'p_amount_cents': 3000,
         'p_bank': 'Banco Teste',
         'p_account_info': 'Ag 0001 · CC 12345-6',
@@ -876,13 +885,13 @@ void main() {
         'p_amount_cents': 1000000,
         'p_description': 'saldo',
       });
-      await a.client.rpc('withdraw_to_bank', params: {
+      await a.client.rpc('withdraw_to_bank_pin', params: {'p_auth': await _pinAuth(a.client), 
         'p_amount_cents': 300000,
         'p_bank': 'Banco Teste',
       });
 
       await expectLater(
-        Future(() async => a.client.rpc('withdraw_to_bank', params: {
+        Future(() async => a.client.rpc('withdraw_to_bank_pin', params: {'p_auth': await _pinAuth(a.client), 
               'p_amount_cents': 300000,
               'p_bank': 'Banco Teste',
             })),
@@ -920,12 +929,12 @@ void main() {
       expect((info.first['boleto_amount_cents'] as num).toInt(), 2500);
       expect(info.first['boleto_status'], 'open');
 
-      await pag.client.rpc('pay_boleto', params: {'p_code': code});
+      await pag.client.rpc('pay_boleto_pin', params: {'p_auth': await _pinAuth(pag.client), 'p_code': code});
       expect(await _balanceCents(pag.client, accPag), 7500);
       expect(await _balanceCents(rec.client, accRec), 2500);
 
       await expectLater(
-        Future(() async => pag.client.rpc('pay_boleto', params: {'p_code': code})),
+        Future(() async => pag.client.rpc('pay_boleto_pin', params: {'p_auth': await _pinAuth(pag.client), 'p_code': code})),
         throwsA(isA<PostgrestException>().having(
           (e) => e.message,
           'message',
@@ -948,7 +957,7 @@ void main() {
       final code = created.first['boleto_code'] as String;
 
       await expectLater(
-        Future(() async => a.client.rpc('pay_boleto', params: {'p_code': code})),
+        Future(() async => a.client.rpc('pay_boleto_pin', params: {'p_auth': await _pinAuth(a.client), 'p_code': code})),
         throwsA(isA<PostgrestException>().having(
           (e) => e.message,
           'message',
@@ -1085,7 +1094,7 @@ void main() {
 
       final resumo = (await a.client.rpc('get_card_summary')) as List;
       final mes = resumo.first['invoice_month'] as String;
-      final pago = await a.client.rpc('pay_card_invoice', params: {'p_month': mes});
+      final pago = await a.client.rpc('pay_card_invoice_pin', params: {'p_auth': await _pinAuth(a.client), 'p_month': mes});
       expect((pago as num).toInt(), 50000);
       expect(await _balanceCents(a.client, accId), 150000);
 
@@ -1093,7 +1102,7 @@ void main() {
       expect((depois.first['invoice_total_cents'] as num).toInt(), 0);
 
       await expectLater(
-        Future(() async => a.client.rpc('pay_card_invoice', params: {'p_month': mes})),
+        Future(() async => a.client.rpc('pay_card_invoice_pin', params: {'p_auth': await _pinAuth(a.client), 'p_month': mes})),
         throwsA(isA<PostgrestException>().having(
           (e) => e.message,
           'message',
@@ -1114,7 +1123,7 @@ void main() {
       final mes = resumo.first['invoice_month'] as String;
 
       await expectLater(
-        Future(() async => a.client.rpc('pay_card_invoice', params: {'p_month': mes})),
+        Future(() async => a.client.rpc('pay_card_invoice_pin', params: {'p_auth': await _pinAuth(a.client), 'p_month': mes})),
         throwsA(isA<PostgrestException>().having(
           (e) => e.message,
           'message',
@@ -1135,6 +1144,92 @@ void main() {
 
       final visivel = await b.client.from('card_purchases').select();
       expect(visivel, isEmpty);
+    });
+
+    // ------------------------------------------------------------ PIN de transação
+
+    test('pin: criar, conferir e autorizar uma operação', () async {
+      final a = await _signUpUser('pinOk');
+      expect(await a.client.rpc('has_transaction_pin'), isFalse);
+      await a.client.rpc('set_transaction_pin', params: {'p_pin': '123456'});
+      expect(await a.client.rpc('has_transaction_pin'), isTrue);
+
+      final auth = await a.client.rpc('authorize_transaction_pin', params: {'p_pin': '123456'});
+      expect(auth, isNotNull);
+    });
+
+    test('pin: PIN errado não gera autorização', () async {
+      final a = await _signUpUser('pinErr');
+      await a.client.rpc('set_transaction_pin', params: {'p_pin': '123456'});
+
+      final auth = await a.client.rpc('authorize_transaction_pin', params: {'p_pin': '000000'});
+      expect(auth, isNull);
+    });
+
+    test('pin: autorização vale uma vez e só para a operação', () async {
+      final a = await _signUpUser('pinUso');
+      final b = await _signUpUser('pinUsoDest');
+      final accB = await _myAccountId(b.client, b.uid);
+      await b.client.from('pix_keys').insert({
+        'account_id': accB,
+        'key_type': 'email',
+        'key_value': b.email,
+      });
+      await a.client.rpc('simulate_deposit', params: {
+        'p_amount_cents': 10000,
+        'p_description': 'saldo',
+      });
+      await a.client.rpc('set_transaction_pin', params: {'p_pin': '123456'});
+      final auth = (await a.client.rpc('authorize_transaction_pin', params: {'p_pin': '123456'})) as String;
+
+      await a.client.rpc('pix_transfer_pin', params: {
+        'p_key_value': b.email,
+        'p_amount_cents': 1000,
+        'p_description': 'teste',
+        'p_auth': auth,
+      });
+
+      await expectLater(
+        Future(() async => a.client.rpc('pix_transfer_pin', params: {
+              'p_key_value': b.email,
+              'p_amount_cents': 1000,
+              'p_description': 'de novo',
+              'p_auth': auth,
+            })),
+        throwsA(isA<PostgrestException>().having(
+          (e) => e.message,
+          'message',
+          contains('confirmação de PIN inválida ou expirada'),
+        )),
+      );
+    });
+
+    test('pin: operação sem autorização válida é recusada e não move dinheiro', () async {
+      final a = await _signUpUser('pinSem');
+      final b = await _signUpUser('pinSemDest');
+      final accA = await _myAccountId(a.client, a.uid);
+      final accB = await _myAccountId(b.client, b.uid);
+      await b.client.from('pix_keys').insert({
+        'account_id': accB,
+        'key_type': 'email',
+        'key_value': b.email,
+      });
+      await a.client.rpc('simulate_deposit', params: {
+        'p_amount_cents': 10000,
+        'p_description': 'saldo',
+      });
+
+      await expectLater(
+        Future(() async => a.client.rpc('pix_transfer_pin', params: {
+              'p_key_value': b.email,
+              'p_amount_cents': 1000,
+              'p_description': 'sem pin',
+              'p_auth': '00000000-0000-0000-0000-000000000000',
+            })),
+        throwsA(isA<PostgrestException>()),
+      );
+      expect(await _balanceCents(a.client, accA), 10000);
+      expect(await _balanceCents(b.client, accB), 0);
     });
   }, skip: skip);
 }
