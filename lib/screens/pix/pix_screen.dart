@@ -276,11 +276,15 @@ class PixScreen extends StatelessWidget {
                       }
                       final recipient = parsed?.key ?? typed;
                       final amount = parsed?.amount ?? _parseAmount(amountController.text)!;
+                      // Fecha o painel antes de pedir o PIN: o diálogo do PIN não
+                      // pode nascer por cima de um painel que está sendo fechado.
+                      final messenger = ScaffoldMessenger.of(context);
+                      Navigator.of(ctx).pop();
+                      if (!context.mounted) return;
                       final auth = await obtainPinAuth(context);
                       if (auth == null) return;
                       final error = await wallet.payPix(amount, recipient: recipient, auth: auth);
-                      if (!ctx.mounted || !context.mounted) return;
-                      Navigator.of(ctx).pop();
+                      if (!context.mounted) return;
                       if (error == null) {
                         HapticFeedback.mediumImpact();
                         // O "Copia e Cola" pode ser enorme: encurta no aviso.

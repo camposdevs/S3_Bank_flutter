@@ -5,16 +5,9 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 );
 
-// Permite que o app no navegador (Chrome) chame a função.
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
 const json = (body: unknown) =>
   new Response(JSON.stringify(body), {
-    headers: { ...cors, 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json' },
   });
 
 async function sha256(text: string): Promise<string> {
@@ -39,9 +32,6 @@ async function findUserId(email: string): Promise<string | null> {
 }
 
 Deno.serve(async (req) => {
-  // Resposta ao pedido de permissão que o navegador faz antes do POST.
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
-
   const { email } = await req.json();
   const e = String(email ?? '').trim().toLowerCase();
 

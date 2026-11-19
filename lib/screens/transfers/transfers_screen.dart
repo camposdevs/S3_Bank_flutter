@@ -113,7 +113,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
       return;
     }
     final info = infoCtrl.text.trim();
-    if (!context.mounted) return;
+    if (!mounted) return;
     final auth = await obtainPinAuth(context);
     if (auth == null) return;
     final error = await wallet.withdrawToBank(
@@ -293,7 +293,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
     );
     if (confirmed != true) return;
 
-    if (!context.mounted) return;
+    if (!mounted) return;
     final auth = await obtainPinAuth(context);
     if (auth == null) return;
     final error = await wallet.payBoleto(digits, auth);
