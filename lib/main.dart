@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -48,7 +49,8 @@ Future<void> main() async {
   );
 
   // Sessão restaurada = app reaberto já logado: exige biometria antes da conta.
-  if (Supabase.instance.client.auth.currentSession != null) {
+  // Biometria não existe no navegador: no Chrome o bloqueio só prenderia o usuário.
+  if (!kIsWeb && Supabase.instance.client.auth.currentSession != null) {
     security.lockOnLaunch();
   }
 
