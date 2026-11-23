@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
     expires_at: new Date(Date.now() + 10 * 60_000).toISOString(),
   });
 
-  await fetch('https://api.resend.com/emails', {
+  const resp = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${Deno.env.get('RESEND_API_KEY')}`,
@@ -86,6 +86,12 @@ Deno.serve(async (req) => {
              <p>Ele vale por 10 minutos. Se não foi você, ignore este e-mail.</p>`,
     }),
   });
+
+  // A resposta é sempre "ok" para não revelar contas. Mas o erro do Resend
+  // precisa aparecer no log do Supabase (Edge Functions > Logs).
+  if (!resp.ok) {
+    console.error('Resend recusou o envio', resp.status, await resp.text());
+  }
 
   return reply;
 });

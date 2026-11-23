@@ -238,6 +238,14 @@ class _SignupScreenState extends State<SignupScreen> {
             icon: Icons.lock_outline,
             obscureText: _obscurePassword,
             textInputAction: TextInputAction.done,
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                color: AppColors.textSecondary,
+              ),
+              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            ),
+
             onSubmitted: (_) {
               if (!_loading) _submit();
             },
