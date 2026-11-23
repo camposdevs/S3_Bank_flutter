@@ -239,11 +239,23 @@ class AuthProvider extends ChangeNotifier {
       await _auth.updateUser(UserAttributes(password: newPassword));
       return null;
     } on AuthException catch (e) {
-      if (e.message.toLowerCase().contains('invalid login')) {
-        return 'Senha atual incorreta';
+      // Registra o erro real do Supabase no console para diagnóstico.
+      debugPrint('[auth] troca de senha falhou: status=${e.statusCode} code=${e.code} msg=${e.message}');
+      final m = e.message.toLowerCase();
+      if (m.contains('invalid login')) return 'Senha atual incorreta';
+      if (m.contains('reauth') || m.contains('nonce')) {
+        return 'O projeto exige confirmação extra para trocar a senha. Peça ao suporte para ajustar a configuração.';
       }
-      return _mapError(e);
-    } catch (_) {
+      if (m.contains('different') || m.contains('same password')) {
+        return 'A nova senha precisa ser diferente da atual';
+      }
+      if (m.contains('weak') || m.contains('at least')) return passwordMessage;
+      if (m.contains('rate limit') || m.contains('too many')) {
+        return 'Muitas tentativas. Aguarde alguns minutos.';
+      }
+      return 'Não foi possível trocar a senha agora. Tente de novo.';
+    } catch (e) {
+      debugPrint('[auth] troca de senha erro: $e');
       return _networkError;
     }
   }
