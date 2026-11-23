@@ -42,6 +42,16 @@ Deno.serve(async (req) => {
   // Resposta sempre igual: não revela se o e-mail tem conta.
   const reply = json({ ok: true });
 
+  // No máximo 5 códigos por e-mail em 24 horas. Sem isso, o limite de
+  // tentativas por código vira força bruta distribuída ao longo dos dias.
+  const desde = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
+  const { count } = await supabase
+    .from('password_reset_codes')
+    .select('id', { count: 'exact', head: true })
+    .eq('email', e)
+    .gte('created_at', desde);
+  if ((count ?? 0) >= 5) return reply;
+
   // No máximo 1 pedido por minuto por e-mail.
   const { data: last } = await supabase
     .from('password_reset_codes')

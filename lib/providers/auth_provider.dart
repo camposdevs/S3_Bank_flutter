@@ -158,7 +158,7 @@ class AuthProvider extends ChangeNotifier {
     final email = normalizeEmail(identifier);
     if (email.isEmpty) return 'Informe seu e-mail';
     if (!isValidEmail(email)) return 'Informe um e-mail válido';
-    if (password.isEmpty) return 'Informe sua senha';
+    if (!isValidPassword(password)) return passwordMessage;
 
     try {
       await _auth.signInWithPassword(email: email, password: password);
@@ -239,23 +239,11 @@ class AuthProvider extends ChangeNotifier {
       await _auth.updateUser(UserAttributes(password: newPassword));
       return null;
     } on AuthException catch (e) {
-      // Registra o erro real do Supabase no console para diagnóstico.
-      debugPrint('[auth] troca de senha falhou: status=${e.statusCode} code=${e.code} msg=${e.message}');
-      final m = e.message.toLowerCase();
-      if (m.contains('invalid login')) return 'Senha atual incorreta';
-      if (m.contains('reauth') || m.contains('nonce')) {
-        return 'O projeto exige confirmação extra para trocar a senha. Peça ao suporte para ajustar a configuração.';
+      if (e.message.toLowerCase().contains('invalid login')) {
+        return 'Senha atual incorreta';
       }
-      if (m.contains('different') || m.contains('same password')) {
-        return 'A nova senha precisa ser diferente da atual';
-      }
-      if (m.contains('weak') || m.contains('at least')) return passwordMessage;
-      if (m.contains('rate limit') || m.contains('too many')) {
-        return 'Muitas tentativas. Aguarde alguns minutos.';
-      }
-      return 'Não foi possível trocar a senha agora. Tente de novo.';
-    } catch (e) {
-      debugPrint('[auth] troca de senha erro: $e');
+      return _mapError(e);
+    } catch (_) {
       return _networkError;
     }
   }
